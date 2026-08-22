@@ -5,8 +5,9 @@ import { useAuth } from './AuthContext';
 const SocketContext = createContext();
 
 const getSocketURL = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '');
+  let url = import.meta.env.VITE_API_URL;
+  if (url) {
+    return url.trim().replace(/\/+$/, '').replace(/\/api$/, '');
   }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return 'https://sevasetu-m2fg.onrender.com';
