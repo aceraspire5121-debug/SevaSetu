@@ -18,12 +18,9 @@ const connectDB = async () => {
     if (isCloudUri && (error.message.includes('querySrv') || error.message.includes('ECONNREFUSED'))) {
       console.log('🔄 Retrying Cloud MongoDB Atlas connection using Direct ReplicaSet Hostnames (Bypassing DNS SRV)...');
       try {
-        const directUri = uri
-          .replace('mongodb+srv://', 'mongodb://')
-          .replace(
-            'cluster0.rqjz3vz.mongodb.net/',
-            'ac-1b7xph0-shard-00-00.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-01.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-02.rqjz3vz.mongodb.net:27017/sevasetu?ssl=true&replicaSet=atlas-1b7xph0-shard-0&authSource=admin&'
-          );
+        const userPassMatch = uri.match(/mongodb\+srv:\/\/([^@]+)@/);
+        const userPass = userPassMatch ? userPassMatch[1] : 'Sushant:HjMxeoWpz8409rQZ';
+        const directUri = `mongodb://${userPass}@ac-1b7xph0-shard-00-00.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-01.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-02.rqjz3vz.mongodb.net:27017/sevasetu?ssl=true&replicaSet=atlas-1b7xph0-shard-0&authSource=admin&retryWrites=true&w=majority`;
 
         const directConn = await mongoose.connect(directUri, {
           serverSelectionTimeoutMS: 10000,
