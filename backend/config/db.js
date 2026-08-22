@@ -15,6 +15,27 @@ const connectDB = async () => {
     console.log(`✅ MongoDB Successfully Connected to Host: ${conn.connection.host}`);
     console.log(`   Database Name: ${conn.connection.name}`);
   } catch (error) {
+    if (isCloudUri && (error.message.includes('querySrv') || error.message.includes('ECONNREFUSED'))) {
+      console.log('🔄 Retrying Cloud MongoDB Atlas connection using Direct ReplicaSet Hostnames (Bypassing DNS SRV)...');
+      try {
+        const directUri = uri
+          .replace('mongodb+srv://', 'mongodb://')
+          .replace(
+            'cluster0.rqjz3vz.mongodb.net/',
+            'ac-1b7xph0-shard-00-00.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-01.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-02.rqjz3vz.mongodb.net:27017/sevasetu?ssl=true&replicaSet=atlas-1b7xph0-shard-0&authSource=admin&'
+          );
+
+        const directConn = await mongoose.connect(directUri, {
+          serverSelectionTimeoutMS: 10000,
+        });
+        console.log(`✅ MongoDB Cloud Direct Connection Succeeded: ${directConn.connection.host}`);
+        console.log(`   Database Name: ${directConn.connection.name}`);
+        return;
+      } catch (directErr) {
+        console.error(`Direct connection retry failed: ${directErr.message}`);
+      }
+    }
+
     if (isCloudUri) {
       console.error(`\n❌ Cloud MongoDB Atlas Connection Failed: ${error.message}`);
       console.error(`-------------------------------------------------------------------`);
