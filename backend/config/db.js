@@ -19,7 +19,8 @@ const connectDB = async () => {
       console.log('🔄 Retrying Cloud MongoDB Atlas connection using Direct ReplicaSet Hostnames (Bypassing DNS SRV)...');
       try {
         const userPassMatch = uri.match(/mongodb\+srv:\/\/([^@]+)@/);
-        const userPass = userPassMatch ? userPassMatch[1] : 'Sushant:HjMxeoWpz8409rQZ';
+        if (!userPassMatch) throw error;
+        const userPass = userPassMatch[1];
         const directUri = `mongodb://${userPass}@ac-1b7xph0-shard-00-00.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-01.rqjz3vz.mongodb.net:27017,ac-1b7xph0-shard-00-02.rqjz3vz.mongodb.net:27017/sevasetu?ssl=true&replicaSet=atlas-1b7xph0-shard-0&authSource=admin&retryWrites=true&w=majority`;
 
         const directConn = await mongoose.connect(directUri, {
