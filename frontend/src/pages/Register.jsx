@@ -15,6 +15,12 @@ import {
   Lock,
   Camera,
   User,
+  Sparkles,
+  ShieldAlert,
+  Scan,
+  XCircle,
+  RefreshCw,
+  FileWarning,
 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -37,6 +43,13 @@ const Register = () => {
   const [idDocumentName, setIdDocumentName] = useState('');
   const [idDocumentBase64, setIdDocumentBase64] = useState('');
   const [idDocumentFile, setIdDocumentFile] = useState(null);
+
+  // AI Aadhaar Verification State
+  const [aiVerifying, setAiVerifying] = useState(false);
+  const [aiVerificationResult, setAiVerificationResult] = useState(null);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [detectedDocType, setDetectedDocType] = useState('');
 
   // Worker specific state
   const [societies, setSocieties] = useState([]);
@@ -132,7 +145,7 @@ const Register = () => {
     reader.readAsDataURL(file);
   };
 
-  // File Upload Handler for Aadhaar Document (Cloudinary)
+  // AI-Powered Aadhaar Verification and File Upload Handler
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -142,26 +155,59 @@ const Register = () => {
       return;
     }
 
-    setIdDocumentName(file.name);
-    setIdDocumentFile(file);
-    setUploadingDoc(true);
+    setAiVerifying(true);
+    setAiVerificationResult(null);
+    setIdDocumentName('');
+    setIdDocumentBase64('');
+    setIdDocumentFile(null);
 
     const reader = new FileReader();
     reader.onloadend = async () => {
       try {
-        const res = await api.post('/upload', {
-          image: reader.result,
-          folder: 'sevasetu/documents',
+        const base64Payload = reader.result;
+
+        // Call SevaAI Vision & UIDAI Document Intelligence Model
+        const res = await api.post('/ai/verify-aadhaar', {
+          image: base64Payload,
+          claimedAadhaarNumber: aadhaarNumber,
+          workerName: name,
         });
-        if (res.data.success) {
-          setIdDocumentBase64(res.data.url);
+
+        if (res.data.success && res.data.isValid) {
+          setIdDocumentName(file.name);
+          setIdDocumentFile(file);
+          setIdDocumentBase64(res.data.url || base64Payload);
+          setAiVerificationResult(res.data);
+
+          // Clear document error if present
+          setFieldErrors((prev) => {
+            const next = { ...prev };
+            delete next.idDocument;
+            return next;
+          });
+        } else {
+          // AI Rejected the document (Random photo / Non-Aadhaar image)
+          setIdDocumentName('');
+          setIdDocumentBase64('');
+          setIdDocumentFile(null);
+          setAiVerificationResult(null);
+          setRejectionReason(
+            res.data.message ||
+              'Our AI Vision Model could not identify this as a valid Government of India Aadhaar Card. Please ensure the card layout, UIDAI emblem, and 12-digit number are clearly visible.'
+          );
+          setDetectedDocType(res.data.detectedType || 'Invalid / Non-Aadhaar Image');
+          setShowRejectionModal(true);
         }
       } catch (err) {
-        console.error('Cloudinary document upload error:', err);
-        // Fallback to Base64
-        setIdDocumentBase64(reader.result);
+        console.error('Aadhaar AI verification error:', err);
+        setRejectionReason(
+          err.response?.data?.message ||
+            'AI verification could not authenticate this document as a genuine Aadhaar card. Please re-upload a clear image.'
+        );
+        setDetectedDocType('Unverified Document');
+        setShowRejectionModal(true);
       } finally {
-        setUploadingDoc(false);
+        setAiVerifying(false);
       }
     };
     reader.readAsDataURL(file);
@@ -524,43 +570,106 @@ const Register = () => {
                 {fieldErrors.aadhaarNumber && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.aadhaarNumber}</p>}
               </div>
 
-              {/* Mandatory File Upload Box for Worker ID */}
+              {/* Mandatory File Upload Box for Worker ID with AI Verification */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Upload Aadhaar / Govt ID Proof Document (PDF/Image) <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase">
+                    Upload Aadhaar Card (Image/PDF) <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-extrabold text-teal-700 flex items-center gap-1 bg-teal-100 px-2 py-0.5 rounded-full">
+                    <Sparkles className="w-3 h-3 text-teal-600 animate-spin" />
+                    AI Fraud & Document Verification Active
+                  </span>
+                </div>
 
-                <div className={`p-5 border-2 border-dashed rounded-2xl bg-white text-center space-y-3 transition-colors ${
-                  fieldErrors.idDocument ? 'border-red-400 bg-red-50/40' : 'border-teal-400 hover:bg-teal-50/40'
-                }`}>
-                  {idDocumentName ? (
-                    <div className="flex items-center justify-between p-3 bg-teal-100 border border-teal-300 rounded-xl text-teal-900">
-                      <div className="flex items-center gap-2 text-xs font-bold truncate">
-                        <FileCheck className="w-5 h-5 text-teal-700 shrink-0" />
-                        <span className="truncate">{idDocumentName}</span>
+                <div
+                  className={`relative p-5 border-2 border-dashed rounded-2xl text-center space-y-3 transition-all ${
+                    fieldErrors.idDocument
+                      ? 'border-red-400 bg-red-50/40'
+                      : aiVerificationResult?.isValid
+                      ? 'border-emerald-500 bg-emerald-50/40 shadow-sm'
+                      : 'border-teal-400 bg-white hover:bg-teal-50/40'
+                  }`}
+                >
+                  {aiVerifying ? (
+                    <div className="py-4 space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-teal-100 border-2 border-teal-500 text-teal-700 flex items-center justify-center mx-auto animate-pulse">
+                        <Scan className="w-6 h-6 animate-spin" />
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-teal-700 text-white rounded-full">
-                        File Attached
-                      </span>
+                      <div>
+                        <h4 className="text-xs font-black text-teal-900 uppercase tracking-wide">
+                          🤖 SevaAI Document Scanner In Progress...
+                        </h4>
+                        <p className="text-[11px] text-teal-700 mt-0.5">
+                          Checking UIDAI layout, government emblems, and Aadhaar card authenticity
+                        </p>
+                      </div>
+                      <div className="w-48 h-1.5 bg-teal-200 rounded-full mx-auto overflow-hidden">
+                        <div className="h-full bg-teal-600 rounded-full animate-[progress_1s_ease-in-out_infinite]"></div>
+                      </div>
+                    </div>
+                  ) : aiVerificationResult?.isValid ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3.5 bg-emerald-100/80 border border-emerald-300 rounded-xl text-emerald-900 text-left">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-xs text-emerald-950">
+                                Verified Official Aadhaar Card ✅
+                              </span>
+                              <span className="text-[9px] font-bold bg-emerald-700 text-white px-2 py-0.5 rounded-full">
+                                {aiVerificationResult.confidenceScore ? `${Math.round(aiVerificationResult.confidenceScore * 100)}% Match` : 'Verified'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-emerald-800 font-medium truncate max-w-xs mt-0.5">
+                              {idDocumentName || 'Aadhaar_Document_Verified.jpg'}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAiVerificationResult(null);
+                            setIdDocumentName('');
+                            setIdDocumentBase64('');
+                            setIdDocumentFile(null);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors"
+                        >
+                          Change
+                        </button>
+                      </div>
+
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-left text-[11px] text-emerald-800 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>AI Model: <strong>{aiVerificationResult.aiModel || 'Gemini 1.5 Flash Vision'}</strong></span>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-700">Anti-Fraud Checked</span>
+                      </div>
                     </div>
                   ) : (
                     <>
                       <Upload className="w-8 h-8 text-teal-600 mx-auto animate-bounce" />
                       <div>
                         <p className="text-xs font-extrabold text-slate-800">
-                          Click to select or drag & drop Aadhaar Card / ID Proof file
+                          Click to select or drag & drop Aadhaar Card file
                         </p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Supports JPG, PNG, WEBP, or PDF (Max 5MB)</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Supports JPG, PNG, WEBP, or PDF (Max 5MB) • <strong>AI will verify authenticity</strong>
+                        </p>
                       </div>
+
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleFileUpload}
+                        disabled={aiVerifying}
+                        className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-600 file:text-white hover:file:bg-teal-700 cursor-pointer disabled:opacity-50"
+                      />
                     </>
                   )}
-
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={handleFileUpload}
-                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-600 file:text-white hover:file:bg-teal-700 cursor-pointer"
-                  />
                 </div>
                 {fieldErrors.idDocument && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.idDocument}</p>}
               </div>
@@ -674,6 +783,57 @@ const Register = () => {
           </button>
         </form>
       </div>
+
+      {/* AI REJECTION POPUP MODAL */}
+      {showRejectionModal && (
+        <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-red-200 text-center animate-in fade-in zoom-in-95 duration-200 space-y-5">
+            {/* Top Icon */}
+            <div className="w-16 h-16 bg-red-100 border-4 border-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+
+            {/* Title & Badge */}
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 text-xs font-extrabold rounded-full border border-red-200 mb-2">
+                <FileWarning className="w-3.5 h-3.5" />
+                AI Fraud Check Failed
+              </div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                Not Identified as Aadhaar Card
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Detected as: <strong className="text-slate-800">{detectedDocType}</strong>
+              </p>
+            </div>
+
+            {/* Explanation Box */}
+            <div className="p-4 bg-red-50/70 border border-red-200 rounded-2xl text-left space-y-2">
+              <p className="text-xs text-red-900 font-semibold leading-relaxed">
+                {rejectionReason}
+              </p>
+              <div className="pt-2 border-t border-red-200/60 text-[11px] text-slate-600 space-y-1">
+                <p className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <span className="text-red-500">✕</span> Random photos, selfies or blank papers are rejected.
+                </p>
+                <p className="flex items-center gap-1.5 font-bold text-emerald-800">
+                  <span className="text-emerald-600">✓</span> Must be a clear photo of your official Aadhaar Card.
+                </p>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <button
+              type="button"
+              onClick={() => setShowRejectionModal(false)}
+              className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Re-upload Aadhaar Card
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
