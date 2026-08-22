@@ -18,6 +18,8 @@ import {
   MapPin,
   RefreshCw,
   Bell,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -130,9 +132,19 @@ const WorkerDashboard = () => {
     }
   };
 
+  const [completedPage, setCompletedPage] = useState(1);
+  const completedPerPage = 5;
+
   const incomingRequests = bookings.filter((b) => b && b.status === 'requested');
   const activeJobs = bookings.filter((b) => b && ['accepted', 'in_progress'].includes(b.status));
   const completedJobs = bookings.filter((b) => b && b.status === 'completed');
+
+  // Pagination for Completed Jobs
+  const totalCompletedPages = Math.ceil(completedJobs.length / completedPerPage) || 1;
+  const paginatedCompletedJobs = completedJobs.slice(
+    (completedPage - 1) * completedPerPage,
+    completedPage * completedPerPage
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -371,40 +383,74 @@ const WorkerDashboard = () => {
           Completed Jobs & Earnings History
         </h3>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 uppercase font-semibold">
-                <th className="py-3 px-2">Booking ID</th>
-                <th className="py-3 px-2">Category</th>
-                <th className="py-3 px-2">Customer</th>
-                <th className="py-3 px-2">Date</th>
-                <th className="py-3 px-2">Payment Status</th>
-                <th className="py-3 px-2 text-right">Payout Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {completedJobs.map((b) => (
-                <tr key={b._id} className="hover:bg-slate-50">
-                  <td className="py-3 px-2 font-bold text-slate-900">#{b.bookingId || ''}</td>
-                  <td className="py-3 px-2 font-semibold text-teal-800">{typeof b.category === 'string' ? b.category : 'Service'}</td>
-                  <td className="py-3 px-2 text-slate-700">{getCustomerName(b.customer)}</td>
-                  <td className="py-3 px-2 text-slate-500">{typeof b.date === 'string' ? b.date : ''}</td>
-                  <td className="py-3 px-2">
-                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                      b.paymentStatus === 'paid' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {typeof b.paymentStatus === 'string' ? b.paymentStatus.toUpperCase() : 'PENDING'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-right font-extrabold text-slate-900">
-                    ₹{b.price || 0}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {completedJobs.length === 0 ? (
+          <p className="text-xs text-slate-500 py-6 text-center">No completed jobs in your earnings history yet. Accept incoming requests to complete jobs and receive payouts!</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 uppercase font-semibold">
+                    <th className="py-3 px-2">Booking ID</th>
+                    <th className="py-3 px-2">Category</th>
+                    <th className="py-3 px-2">Customer</th>
+                    <th className="py-3 px-2">Date</th>
+                    <th className="py-3 px-2">Payment Status</th>
+                    <th className="py-3 px-2 text-right">Payout Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedCompletedJobs.map((b) => (
+                    <tr key={b._id} className="hover:bg-slate-50">
+                      <td className="py-3 px-2 font-bold text-slate-900">#{b.bookingId || ''}</td>
+                      <td className="py-3 px-2 font-semibold text-teal-800">{typeof b.category === 'string' ? b.category : 'Service'}</td>
+                      <td className="py-3 px-2 text-slate-700">{getCustomerName(b.customer)}</td>
+                      <td className="py-3 px-2 text-slate-500">{typeof b.date === 'string' ? b.date : ''}</td>
+                      <td className="py-3 px-2">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                          b.paymentStatus === 'paid' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {typeof b.paymentStatus === 'string' ? b.paymentStatus.toUpperCase() : 'PENDING'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right font-extrabold text-slate-900">
+                        ₹{b.price || 0}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls Bar */}
+            {completedJobs.length > completedPerPage && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-600">
+                <span>
+                  Showing {((completedPage - 1) * completedPerPage) + 1} to {Math.min(completedPage * completedPerPage, completedJobs.length)} of {completedJobs.length} completed jobs
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={completedPage === 1}
+                    onClick={() => setCompletedPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="font-extrabold text-slate-800 px-1">
+                    Page {completedPage} of {totalCompletedPages}
+                  </span>
+                  <button
+                    disabled={completedPage === totalCompletedPages}
+                    onClick={() => setCompletedPage((p) => Math.min(totalCompletedPages, p + 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
