@@ -313,10 +313,10 @@ const CustomerDashboard = () => {
         </div>
 
         {/* Category Pills Filter */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+        <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 pt-2 border-t border-slate-100 no-scrollbar">
           <button
             onClick={() => handleCategorySelect('')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shrink-0 cursor-pointer ${
               !selectedCategory
                 ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
                 : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -334,7 +334,7 @@ const CustomerDashboard = () => {
               <button
                 key={cat._id}
                 onClick={() => handleCategorySelect(cat.name)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                   isSelected
                     ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'

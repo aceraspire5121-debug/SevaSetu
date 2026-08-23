@@ -39,6 +39,7 @@ const Navbar = () => {
 
   const getRoleDashboardLink = () => {
     if (!user) return '/login';
+    if (user.role === 'customer') return '/my-bookings';
     if (user.role === 'worker') {
       if (worker && worker.approvalStatus !== 'approved') {
         return '/worker-pending';
@@ -47,7 +48,7 @@ const Navbar = () => {
     }
     if (user.role === 'societyAdmin') return '/society-dashboard';
     if (user.role === 'federationAdmin') return '/federation-dashboard';
-    return '/explore-services';
+    return '/my-bookings';
   };
 
   const isActivePath = (path) => location.pathname === path;
@@ -415,7 +416,7 @@ const Navbar = () => {
       )}
 
       {/* STICKY BOTTOM MOBILE FLOATING NAVIGATION DOCK (Native iOS App Style) */}
-      <div className="fixed bottom-3 inset-x-4 z-40 md:hidden bg-slate-950/90 text-white backdrop-blur-xl border border-slate-800/80 rounded-full px-3 py-2 shadow-2xl flex justify-around items-center text-[10px] font-bold">
+      <div className="fixed bottom-3 inset-x-3 z-40 md:hidden bg-slate-950/90 text-white backdrop-blur-xl border border-slate-800/80 rounded-full px-2 py-2 shadow-2xl flex justify-around items-center text-[10px] font-bold">
         <Link
           to="/"
           className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-full transition-colors ${
@@ -433,29 +434,32 @@ const Navbar = () => {
           }`}
         >
           <Briefcase className="w-4 h-4" />
-          <span>Explore</span>
+          <span>Services</span>
         </Link>
 
-        {user && user.role === 'customer' && (
-          <Link
-            to="/my-bookings"
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-full transition-colors ${
-              isActivePath('/my-bookings') ? 'text-teal-400 font-black' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <CheckSquare className="w-4 h-4" />
-            <span>Bookings</span>
-          </Link>
-        )}
+        <Link
+          to={getRoleDashboardLink()}
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-full transition-colors ${
+            isActivePath(getRoleDashboardLink()) ? 'text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          {user?.role === 'customer' ? (
+            <CheckSquare className="w-4 h-4 text-teal-300" />
+          ) : (
+            <LayoutDashboard className="w-4 h-4 text-teal-300" />
+          )}
+          <span>{user?.role === 'customer' ? 'Bookings' : 'Dashboard'}</span>
+        </Link>
 
         {user ? (
-          <Link
-            to={getRoleDashboardLink()}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 text-teal-300 rounded-full"
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 text-slate-300 rounded-full"
           >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard</span>
-          </Link>
+            <User className="w-4 h-4 text-amber-300" />
+            <span className="truncate max-w-[50px]">{user.name.split(' ')[0]}</span>
+          </button>
         ) : (
           <Link
             to="/login"

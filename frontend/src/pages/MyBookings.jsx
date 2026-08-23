@@ -257,12 +257,12 @@ const MyBookings = () => {
                       </div>
 
                       {/* Status Stepper */}
-                      <div className="w-full md:w-auto flex flex-col items-start md:items-end gap-2">
-                        <div className="flex items-center gap-2 text-[11px] font-bold">
+                      <div className="w-full md:w-auto flex flex-col items-start md:items-end gap-2 overflow-hidden">
+                        <div className="flex items-center gap-1 overflow-x-auto max-w-full py-1 text-[10px] sm:text-[11px] font-bold no-scrollbar">
                           {statusSteps.map((st, idx) => (
-                            <div key={st} className="flex items-center gap-1">
+                            <div key={st} className="flex items-center gap-1 shrink-0">
                               <span
-                                className={`px-2.5 py-0.5 rounded-full capitalize ${
+                                className={`px-2 py-0.5 rounded-full capitalize whitespace-nowrap ${
                                   idx <= currentStepIdx
                                     ? 'bg-teal-600 text-white'
                                     : 'bg-slate-200 text-slate-500'
@@ -270,7 +270,7 @@ const MyBookings = () => {
                               >
                                 {st.replace('_', ' ')}
                               </span>
-                              {idx < statusSteps.length - 1 && <span className="text-slate-300">→</span>}
+                              {idx < statusSteps.length - 1 && <span className="text-slate-300 text-[10px]">→</span>}
                             </div>
                           ))}
                         </div>
