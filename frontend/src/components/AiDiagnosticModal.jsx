@@ -38,6 +38,7 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
   const [diagnosis, setDiagnosis] = useState(null);
   const [recommendedWorkers, setRecommendedWorkers] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [rejectedMsg, setRejectedMsg] = useState('');
   const [aiSource, setAiSource] = useState('');
   const [showVideoCall, setShowVideoCall] = useState(false);
 
@@ -79,12 +80,12 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
 
   const handleClearImage = () => {
     setSelectedImage(null); setImagePreview(null);
-    setUploadedFileName(''); setDiagnosis(null); setErrorMsg('');
+    setUploadedFileName(''); setDiagnosis(null); setErrorMsg(''); setRejectedMsg('');
   };
 
   const triggerDiagnosis = async () => {
     if (!selectedImage) { setErrorMsg('Please take a photo or upload an image first.'); return; }
-    setErrorMsg(''); setIsScanning(true); setScanStep(0);
+    setErrorMsg(''); setRejectedMsg(''); setIsScanning(true); setScanStep(0);
     const t1 = setTimeout(() => setScanStep(1), 1800);
     const t2 = setTimeout(() => setScanStep(2), 4000);
     try {
@@ -106,8 +107,13 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
       throw new Error(res.data?.message || 'Unexpected AI response');
     } catch (err) {
       clearTimeout(t1); clearTimeout(t2);
-      setErrorMsg(err.response?.data?.message || err.message || 'Gemini Vision AI call failed.');
       setIsScanning(false);
+      // Handle image rejected by Gemini (422 = irrelevant image)
+      if (err.response?.status === 422 && err.response?.data?.rejected) {
+        setRejectedMsg(err.response.data.message);
+      } else {
+        setErrorMsg(err.response?.data?.message || err.message || 'Gemini Vision AI call failed.');
+      }
     }
   };
 
@@ -175,6 +181,40 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
                 <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <p className="text-xs text-red-300 font-medium leading-relaxed">{errorMsg}</p>
+              </div>
+            )}
+
+            {/* REJECTED IMAGE CARD */}
+            {rejectedMsg && (
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.25)' }}>
+                <div className="px-5 py-5 flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                    style={{ background: 'rgba(234,179,8,0.15)' }}>
+                    🚫
+                  </div>
+                  <div>
+                    <h4 className="text-white font-bold text-sm mb-1">Irrelevant Image Detected</h4>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(234,179,8,0.9)' }}>{rejectedMsg}</p>
+                  </div>
+                  <div className="pt-1 w-full">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(148,163,184,0.5)' }}>
+                      Valid examples:
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {['🔌 Burnt Socket', '🚰 Leaking Tap', '❄️ Dusty AC', '🧱 Damp Wall', '🪵 Broken Door', '🧹 Dirty Tiles'].map(ex => (
+                        <span key={ex} className="px-2.5 py-1 rounded-lg text-[11px] font-medium"
+                          style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          {ex}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={handleClearImage}
+                    className="mt-1 px-5 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all"
+                    style={{ background: 'rgba(234,179,8,0.2)', color: '#fbbf24', border: '1px solid rgba(234,179,8,0.3)' }}>
+                    Upload a Different Photo
+                  </button>
+                </div>
               </div>
             )}
 

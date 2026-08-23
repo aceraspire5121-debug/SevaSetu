@@ -214,20 +214,39 @@ exports.diagnoseProblemImage = async (req, res) => {
       let mimeType = image.includes('data:') ? image.split(';')[0].replace('data:', '') : 'image/jpeg';
       if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
 
-      const prompt = `You are the AI Problem Diagnostic & Cost Estimation Engine for SevaSetu (Indian Labour Cooperative Home Services Platform).
-Category: "${categoryHint || 'Auto'}". Context note: "${description || fileName || 'None'}".
-Inspect this photo carefully and provide a realistic diagnosis with standard Indian cooperative fair-wage pricing.
+      const prompt = `You are the AI Problem Diagnostic & Cost Estimation Engine for SevaSetu — an Indian Home Services platform for Electrician, Plumber, AC Technician, Painter, Carpenter, and House Cleaning services.
 
-Rules for pricing:
-- Minor quick fix (e.g. leaking tap washer, 1 loose switch, filter cleaning, door hinge): Labor ₹70-₹110, Spares ₹20-₹30. Total ₹99-₹140.
-- Standard repair (e.g. P-trap pipe leak, 16A modular socket, AC foam wash, damp wall): Labor ₹150-₹220, Spares ₹60-₹120. Total ₹210-₹340.
-- Major repair (e.g. AC gas leak, main MCB board, concealed pipe burst): Labor ₹280-₹380, Spares ₹150-₹290. Total ₹430-₹670.
+STEP 1 — STRICT IMAGE VALIDATION (DO THIS FIRST):
+Before anything else, check if this image shows a real home services problem. Valid images include:
+- Broken/burnt/loose electrical switchboards, sockets, wires, MCB boards
+- Leaking pipes, dripping taps, burst plumbing joints, waterlogged sinks
+- Dirty/dusty AC units, broken appliances (fridge, washing machine, geyser)
+- Damp/peeling/cracked walls, water seepage stains, flaking paint
+- Broken doors, loose hinges, damaged wooden furniture, stuck drawers
+- Dirty floors, stained tiles, bathroom lime scale, grease in kitchen
 
-Respond strictly in valid JSON:
+If the image shows ANYTHING ELSE (food, animals, people, selfies, landscapes, vehicles, text, art, random objects like ice cream, scenery, plants, products, screenshots etc.) — it is REJECTED.
+
+If image is NOT related to home services, respond ONLY with this JSON and nothing else:
 {
+  "rejected": true,
+  "rejectionReason": "This image does not appear to show a home repair or service issue. Please upload a clear photo of the broken or damaged item you need fixed (e.g. switchboard, leaking tap, AC unit, damp wall, etc.)"
+}
+
+STEP 2 — ONLY IF IMAGE IS VALID, provide diagnosis:
+Category hint: "${categoryHint || 'Auto'}". Extra context: "${description || fileName || 'None'}".
+
+Pricing rules (Indian Cooperative Fair-Wage):
+- Minor quick fix (loose switch, dripping tap, filter clean, door hinge): Labor ₹70–₹110, Spares ₹20–₹30. Total ₹99–₹140.
+- Standard repair (P-trap leak, 16A socket, AC foam wash, damp wall): Labor ₹150–₹220, Spares ₹60–₹120. Total ₹210–₹340.
+- Major repair (AC gas refill, MCB board, concealed pipe burst): Labor ₹280–₹380, Spares ₹150–₹290. Total ₹430–₹670.
+
+Respond strictly in valid JSON (no extra text):
+{
+  "rejected": false,
   "title": string,
   "category": "Plumber" | "Electrician" | "Technician" | "Painter" | "House Cleaning" | "Carpenter",
-  "confidence": number,
+  "confidence": number (0-100),
   "severity": "Low (Minor Quick Fix)" | "Medium (Standard Repair)" | "High (Major Work)",
   "description": string,
   "duration": string,
@@ -304,6 +323,15 @@ Respond strictly in valid JSON:
         const aiResult = geminiData.data;
         if (aiResult.candidates && aiResult.candidates[0]?.content?.parts[0]?.text) {
           const parsed = JSON.parse(aiResult.candidates[0].content.parts[0].text);
+
+          // If Gemini flagged image as irrelevant to home services
+          if (parsed.rejected === true) {
+            return res.status(422).json({
+              success: false,
+              rejected: true,
+              message: parsed.rejectionReason || 'Please upload a photo of a home repair issue (switchboard, tap, AC unit, wall damage, etc.)',
+            });
+          }
 
           let recommendedWorkers = [];
           try {
