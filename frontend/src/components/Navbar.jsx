@@ -92,8 +92,8 @@ const Navbar = () => {
               )}
             </nav>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Desktop Right Actions (Hidden on Mobile) */}
+            <div className="hidden md:flex items-center gap-2.5 sm:gap-3">
               {/* Instant Live Video Help Button */}
               <button
                 type="button"
@@ -103,7 +103,7 @@ const Navbar = () => {
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                 <Video className="w-3.5 h-3.5 text-teal-300" />
-                <span className="hidden sm:inline">Video Help</span>
+                <span>Video Help</span>
                 <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full">
                   ₹49
                 </span>
@@ -122,7 +122,7 @@ const Navbar = () => {
               {user ? (
                 <div className="flex items-center gap-3">
                   {/* Role Badge */}
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     {user.role === 'customer' && 'Customer'}
                     {user.role === 'worker' && 'Worker'}
@@ -168,12 +168,14 @@ const Navbar = () => {
                   </Link>
                 </div>
               )}
+            </div>
 
-              {/* Mobile Menu Toggle Button */}
+            {/* Mobile Menu Hamburger Button Only */}
+            <div className="flex items-center gap-2 md:hidden">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer border border-slate-200"
                 aria-label="Toggle Navigation Menu"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
