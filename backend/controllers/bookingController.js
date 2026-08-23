@@ -2,6 +2,13 @@ const Booking = require('../models/Booking');
 const Worker = require('../models/Worker');
 const User = require('../models/User');
 const { notifyBookingUpdate, notifyNewBooking } = require('../sockets/bookingSocket');
+const {
+  normalizeCityName,
+  getCoordinatesForLocation,
+  getDistanceKm,
+  calculateEta,
+  isSameCityCluster,
+} = require('../utils/geoUtils');
 
 // @desc    Create a standard booking
 // @route   POST /api/bookings
@@ -130,6 +137,61 @@ exports.createEmergencyBooking = async (req, res, next) => {
   }
 };
 
+// @desc    Create a Broadcast Service Booking to All Nearby Workers
+// @route   POST /api/bookings/broadcast
+// @access  Private (Customer)
+exports.createBroadcastBooking = async (req, res, next) => {
+  try {
+    const {
+      packageTitle,
+      category,
+      price,
+      date,
+      timeSlot,
+      address,
+      city,
+      pincode,
+      notes,
+    } = req.body;
+
+    const rawCity = city || req.user.city || 'Ghaziabad';
+    const normCity = normalizeCityName(rawCity);
+    const [custLat, custLon] = getCoordinatesForLocation(`${address || ''}, ${rawCity}`);
+
+    const booking = await Booking.create({
+      customer: req.user._id,
+      category: category || 'House Cleaning',
+      packageTitle: packageTitle || 'Service Package',
+      date: date || new Date().toISOString().split('T')[0],
+      timeSlot: timeSlot || '09:00 AM - 12:00 PM',
+      address: address || req.user.address || 'Service address',
+      city: rawCity,
+      pincode: pincode || req.user.pincode || '201009',
+      notes: notes || '',
+      price: Number(price) || 499,
+      status: 'requested',
+      isBroadcast: true,
+      broadcastLocation: `${address || ''}, ${rawCity} ${pincode ? '-' + pincode : ''}`.trim(),
+    });
+
+    const populated = await Booking.findById(booking._id).populate(
+      'customer',
+      'name email phone profilePhoto city pincode address'
+    );
+
+    // Notify matching workers via targeted Socket.io room
+    await notifyNewBooking(populated);
+
+    res.status(201).json({
+      success: true,
+      data: populated,
+      message: `Service package request broadcasted to all nearby ${normCity.toUpperCase()} cooperative workers!`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get user's bookings (Customer or Worker)
 // @route   GET /api/bookings
 // @access  Private
@@ -139,9 +201,30 @@ exports.getUserBookings = async (req, res, next) => {
     if (req.user.role === 'customer') {
       query = { customer: req.user._id };
     } else if (req.user.role === 'worker') {
-      query = { worker: req.user._id };
+      const workerProfile = await Worker.findOne({ user: req.user._id }).populate('society');
+      const workerCats = workerProfile?.categories || [];
+      const rawCity = req.user.city || workerProfile?.society?.city || 'Delhi';
+      const normWorkerCity = normalizeCityName(rawCity);
+
+      // Dual Gate Match: Category Match + City / Region Match
+      query = {
+        $or: [
+          { worker: req.user._id },
+          {
+            isBroadcast: true,
+            status: 'requested',
+            category: { $in: workerCats },
+            declinedWorkers: { $ne: req.user._id },
+            $or: [
+              { city: { $regex: new RegExp(normWorkerCity, 'i') } },
+              { address: { $regex: new RegExp(normWorkerCity, 'i') } },
+              { broadcastLocation: { $regex: new RegExp(normWorkerCity, 'i') } },
+              { pincode: req.user.pincode },
+            ],
+          },
+        ],
+      };
     } else if (req.user.role === 'societyAdmin' || req.user.role === 'federationAdmin') {
-      // Admin sees all or society specific
       query = {};
     }
 
@@ -150,10 +233,86 @@ exports.getUserBookings = async (req, res, next) => {
       .populate('worker', 'name email phone profilePhoto city pincode address')
       .sort({ createdAt: -1 });
 
+    // Enrich bookings with realistic proximity distance for workers
+    let enrichedBookings = bookings;
+    if (req.user.role === 'worker') {
+      const [workerLat, workerLon] = getCoordinatesForLocation(`${req.user.address || ''}, ${req.user.city || ''}`);
+      enrichedBookings = bookings.map((b) => {
+        const bObj = b.toObject();
+        if (bObj.isBroadcast) {
+          const [custLat, custLon] = getCoordinatesForLocation(`${bObj.address || ''}, ${bObj.city || ''}`);
+          const distanceKm = getDistanceKm(workerLat, workerLon, custLat, custLon);
+          bObj.distanceKm = distanceKm;
+          bObj.estimatedEta = calculateEta(distanceKm);
+        }
+        return bObj;
+      });
+    }
+
     res.status(200).json({
       success: true,
-      count: bookings.length,
-      data: bookings,
+      count: enrichedBookings.length,
+      data: enrichedBookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Worker accepts a broadcast pool booking
+// @route   PUT /api/bookings/:id/accept-broadcast
+// @access  Private (Worker)
+exports.acceptBroadcastBooking = async (req, res, next) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'requested') {
+      return res.status(400).json({ success: false, message: 'This job has already been claimed or completed.' });
+    }
+
+    booking.worker = req.user._id;
+    booking.status = 'accepted';
+    await booking.save();
+
+    await Worker.findOneAndUpdate({ user: req.user._id }, { availabilityStatus: 'busy' });
+
+    const populated = await Booking.findById(booking._id)
+      .populate('customer', 'name email phone profilePhoto city pincode address')
+      .populate('worker', 'name email phone profilePhoto city pincode address');
+
+    notifyBookingUpdate(populated);
+
+    res.status(200).json({
+      success: true,
+      data: populated,
+      message: 'You have accepted this job! Customer has been notified in real-time.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Worker declines a broadcast pool booking (Pass to other nearby workers)
+// @route   PUT /api/bookings/:id/decline-broadcast
+// @access  Private (Worker)
+exports.declineBroadcastBooking = async (req, res, next) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (!booking.declinedWorkers.includes(req.user._id)) {
+      booking.declinedWorkers.push(req.user._id);
+      await booking.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Job request declined and passed to other nearby workers.',
     });
   } catch (error) {
     next(error);

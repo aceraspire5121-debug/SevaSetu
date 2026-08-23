@@ -15,8 +15,26 @@ const BookingSchema = new mongoose.Schema(
     worker: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
     },
+    isBroadcast: {
+      type: Boolean,
+      default: false,
+    },
+    packageTitle: {
+      type: String,
+      default: '',
+    },
+    broadcastLocation: {
+      type: String,
+      default: '',
+    },
+    declinedWorkers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     category: {
       type: String,
       required: true,

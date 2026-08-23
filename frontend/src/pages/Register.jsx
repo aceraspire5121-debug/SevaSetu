@@ -21,11 +21,20 @@ import {
   XCircle,
   RefreshCw,
   FileWarning,
+  Crown,
+  Briefcase,
+  MapPin,
+  Mail,
+  Phone,
+  Key,
+  BadgeCheck,
+  ChevronRight,
 } from 'lucide-react';
 import api from '../utils/api';
 
 const Register = () => {
-  const [role, setRole] = useState('customer'); // 'customer' or 'worker'
+  // Roles: 'customer', 'worker', 'societyAdmin', 'federationAdmin'
+  const [role, setRole] = useState('customer');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,24 +43,25 @@ const Register = () => {
   const [pincode, setPincode] = useState('');
   const [address, setAddress] = useState('');
 
-  // Real Profile Photo File Upload State
+  // Profile Photo State
   const [profilePhoto, setProfilePhoto] = useState('https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=300&q=80');
   const [customPhotoUploaded, setCustomPhotoUploaded] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // Mandatory Worker Document State
+  // Worker Mandatory Document State
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [idDocumentName, setIdDocumentName] = useState('');
   const [idDocumentBase64, setIdDocumentBase64] = useState('');
   const [idDocumentFile, setIdDocumentFile] = useState(null);
 
-  // AI Aadhaar Verification State
+  // Document Verification State
   const [aiVerifying, setAiVerifying] = useState(false);
   const [aiVerificationResult, setAiVerificationResult] = useState(null);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [detectedDocType, setDetectedDocType] = useState('');
 
-  // Worker specific state
+  // Worker Specific State
   const [societies, setSocieties] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [selectedSocietyId, setSelectedSocietyId] = useState('');
@@ -60,7 +70,11 @@ const Register = () => {
   const [bio, setBio] = useState('');
   const [experienceYears, setExperienceYears] = useState(2);
 
-  // Real-time Field Errors
+  // Admin Specific State
+  const [adminDesignation, setAdminDesignation] = useState('Society Secretary');
+  const [federationCode, setFederationCode] = useState('');
+
+  // Form State
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -96,22 +110,18 @@ const Register = () => {
 
   const handleCategoryToggle = (catName) => {
     if (selectedCategories.includes(catName)) {
-      if (selectedCategories.length === 1) return; // Must have at least 1 category
+      if (selectedCategories.length === 1) return;
       setSelectedCategories(selectedCategories.filter((c) => c !== catName));
     } else {
       setSelectedCategories([...selectedCategories, catName]);
     }
   };
 
-  // Get max minimum wage floor among selected categories
   const currentMinWageFloor = categoriesList
     .filter((cat) => selectedCategories.includes(cat.name))
     .reduce((max, cat) => Math.max(max, cat.minHourlyRate || 150), 150);
 
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [uploadingDoc, setUploadingDoc] = useState(false);
-
-  // Profile Photo Real File Upload Handler (Cloudinary)
+  // Profile Photo File Upload Handler
   const handleProfilePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -135,7 +145,6 @@ const Register = () => {
         }
       } catch (err) {
         console.error('Cloudinary profile upload error:', err);
-        // Fallback to Base64
         setProfilePhoto(reader.result);
         setCustomPhotoUploaded(true);
       } finally {
@@ -145,7 +154,7 @@ const Register = () => {
     reader.readAsDataURL(file);
   };
 
-  // AI-Powered Aadhaar Verification and File Upload Handler
+  // Real OCR Aadhaar Verification & File Upload Handler
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -166,7 +175,6 @@ const Register = () => {
       try {
         const base64Payload = reader.result;
 
-        // Call SevaAI Vision & UIDAI Document Intelligence Model
         const res = await api.post('/ai/verify-aadhaar', {
           image: base64Payload,
           claimedAadhaarNumber: aadhaarNumber,
@@ -179,30 +187,28 @@ const Register = () => {
           setIdDocumentBase64(res.data.url || base64Payload);
           setAiVerificationResult(res.data);
 
-          // Clear document error if present
           setFieldErrors((prev) => {
             const next = { ...prev };
             delete next.idDocument;
             return next;
           });
         } else {
-          // AI Rejected the document (Random photo / Non-Aadhaar image)
           setIdDocumentName('');
           setIdDocumentBase64('');
           setIdDocumentFile(null);
           setAiVerificationResult(null);
           setRejectionReason(
             res.data.message ||
-              'Our AI Vision Model could not identify this as a valid Government of India Aadhaar Card. Please ensure the card layout, UIDAI emblem, and 12-digit number are clearly visible.'
+              'The uploaded image was scanned and does not match an official UIDAI Aadhaar Card. Please ensure you upload a clear photo of your original Aadhaar Card.'
           );
-          setDetectedDocType(res.data.detectedType || 'Invalid / Non-Aadhaar Image');
+          setDetectedDocType(res.data.detectedType || 'Invalid Image');
           setShowRejectionModal(true);
         }
       } catch (err) {
-        console.error('Aadhaar AI verification error:', err);
+        console.error('Aadhaar verification error:', err);
         setRejectionReason(
           err.response?.data?.message ||
-            'AI verification could not authenticate this document as a genuine Aadhaar card. Please re-upload a clear image.'
+            'Document verification could not authenticate this document. Please upload a clear photo of your Aadhaar Card.'
         );
         setDetectedDocType('Unverified Document');
         setShowRejectionModal(true);
@@ -267,7 +273,7 @@ const Register = () => {
       }
 
       if (!idDocumentBase64 && !idDocumentName) {
-        errors.idDocument = 'Mandatory: You MUST upload an Aadhaar Card or Government ID Document image/PDF!';
+        errors.idDocument = 'Mandatory: You MUST upload an authenticated Aadhaar Card image/PDF!';
       }
 
       if (!selectedSocietyId) {
@@ -287,6 +293,12 @@ const Register = () => {
       }
     }
 
+    if (role === 'societyAdmin') {
+      if (!selectedSocietyId) {
+        errors.societyId = 'Please select the Labour Cooperative Society you represent';
+      }
+    }
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -296,7 +308,7 @@ const Register = () => {
     setError('');
 
     if (!validateForm()) {
-      setError('Please fix the highlighted errors in the form before submitting.');
+      setError('Please resolve the highlighted validation errors before submitting.');
       return;
     }
 
@@ -315,7 +327,7 @@ const Register = () => {
         pincode,
         address,
         profilePhoto,
-        idProofDocument: role === 'worker' ? (idDocumentBase64 || formattedDocString) : 'Customer Verified',
+        idProofDocument: role === 'worker' ? (idDocumentBase64 || formattedDocString) : `${role} Verified`,
         aadhaarNumber: role === 'worker' ? aadhaarNumber : '',
         ...(role === 'worker' && {
           societyId: selectedSocietyId,
@@ -324,85 +336,128 @@ const Register = () => {
           bio,
           experienceYears: Number(experienceYears),
         }),
+        ...(role === 'societyAdmin' && {
+          societyId: selectedSocietyId,
+        }),
       };
 
       const res = await register(payload);
       if (res.success) {
         if (role === 'worker') {
           navigate('/worker-pending');
+        } else if (role === 'societyAdmin') {
+          navigate('/society-dashboard');
+        } else if (role === 'federationAdmin') {
+          navigate('/federation-dashboard');
         } else {
           navigate('/explore-services');
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please check form validation.');
+      setError(err.response?.data?.message || 'Registration failed. Please check form inputs.');
     } finally {
       setLoading(false);
     }
   };
 
+  const roleConfigs = [
+    {
+      id: 'customer',
+      title: 'Customer',
+      subtitle: 'Book household services',
+      icon: User,
+      badge: 'Households',
+      color: 'teal',
+    },
+    {
+      id: 'worker',
+      title: 'Cooperative Worker',
+      subtitle: 'Democratic ownership & fair wage',
+      icon: Briefcase,
+      badge: 'Fair Wage Floor',
+      color: 'amber',
+    },
+  ];
+
   return (
-    <div className="min-h-[85vh] py-12 px-4 flex items-center justify-center">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-teal-800 to-slate-900 text-white p-8 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-teal-500/20 text-teal-300 mx-auto mb-3 flex items-center justify-center border border-teal-400/30">
-            <HeartHandshake className="w-6 h-6" />
+    <div className="min-h-[90vh] py-10 px-4 sm:px-6 lg:px-8 bg-slate-50 flex items-center justify-center">
+      <div className="bg-white w-full max-w-3xl rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+        {/* Top Urban-Style Gradient Header */}
+        <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white p-8 text-center relative overflow-hidden">
+          <div className="absolute -top-12 -right-12 w-48 h-48 bg-teal-500/20 rounded-full blur-2xl" />
+          <div className="relative z-10 space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-teal-500/20 text-teal-300 mx-auto flex items-center justify-center border border-teal-400/30">
+              <HeartHandshake className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Create your {t('brand')} Account</h2>
+            <p className="text-xs text-teal-200 max-w-md mx-auto">
+              Democratic Labour Cooperative Platform for Customers & Verified Cooperative Workers
+            </p>
           </div>
-          <h2 className="text-2xl font-extrabold">{t('register')} on {t('brand')}</h2>
-          <p className="text-xs text-teal-200 mt-1">Strict & Verified Registration for Customers & Cooperative Workers</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
           {error && (
-            <div className="p-3.5 bg-red-50 text-red-700 text-xs font-semibold rounded-xl border border-red-200 flex items-start gap-2">
+            <div className="p-4 bg-red-50 text-red-700 text-xs font-semibold rounded-2xl border border-red-200 flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Role Switcher Tabs */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Register As</label>
-            <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setRole('customer');
-                  setFieldErrors({});
-                }}
-                className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
-                  role === 'customer'
-                    ? 'bg-white text-teal-800 shadow-md'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                👤 Customer (Household Services)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRole('worker');
-                  setFieldErrors({});
-                }}
-                className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
-                  role === 'worker'
-                    ? 'bg-teal-600 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                🛠 Worker (Mandatory ID Verification)
-              </button>
+          {/* 1. ROLE SWITCHER 2-CARD GRID (Customer & Cooperative Worker only) */}
+          <div className="space-y-2">
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+              Select Registration Role <span className="text-red-500">*</span>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {roleConfigs.map((rc) => {
+                const Icon = rc.icon;
+                const isSelected = role === rc.id;
+                return (
+                  <button
+                    key={rc.id}
+                    type="button"
+                    onClick={() => {
+                      setRole(rc.id);
+                      setFieldErrors({});
+                    }}
+                    className={`relative p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-teal-50/80 border-teal-600 shadow-md ring-2 ring-teal-600/20'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                          isSelected ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-teal-600" />}
+                    </div>
+
+                    <div>
+                      <h4 className={`text-xs font-black ${isSelected ? 'text-teal-950' : 'text-slate-900'}`}>
+                        {rc.title}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{rc.subtitle}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* REAL PROFILE PHOTO FILE UPLOAD BOX */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
-            <div className="relative group">
+          {/* 2. PROFILE PHOTO CARD (Urban Company Avatar Element) */}
+          <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+            <div className="relative group shrink-0">
               <img
                 src={profilePhoto}
                 alt="Profile Preview"
-                className="w-16 h-16 rounded-full object-cover border-2 border-teal-600 shadow-md"
+                className="w-16 h-16 rounded-full object-cover border-2 border-teal-600 shadow-sm"
               />
               <div className="absolute inset-0 bg-slate-900/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="w-5 h-5 text-white" />
@@ -411,149 +466,169 @@ const Register = () => {
 
             <div className="flex-1 space-y-1 text-center sm:text-left">
               <label className="block text-xs font-bold text-slate-800">
-                {customPhotoUploaded ? 'Custom Photo Uploaded ✅' : 'Upload Real Profile Picture (Optional)'}
+                {customPhotoUploaded ? 'Profile Picture Uploaded ✅' : 'Upload Profile Photo (Optional)'}
               </label>
               <p className="text-[11px] text-slate-500">
-                Upload your actual face photo from device gallery/camera (JPG, PNG - Max 3MB)
+                Upload your actual face photo from device gallery/camera (JPG, PNG - Max 5MB)
               </p>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleProfilePhotoUpload}
+                disabled={uploadingPhoto}
                 className="block text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-100 file:text-teal-800 hover:file:bg-teal-200 cursor-pointer"
               />
             </div>
           </div>
 
-          {/* Personal Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Full Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Ramesh Verma"
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none transition-colors ${
-                  fieldErrors.name ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
-                }`}
-              />
-              {fieldErrors.name && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.name}</p>}
+          {/* 3. SECTION: PERSONAL & ACCOUNT DETAILS (Nested Element Card) */}
+          <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-4">
+            <div className="flex items-center gap-2 text-slate-800 border-b border-slate-100 pb-2.5">
+              <User className="w-4 h-4 text-teal-600" />
+              <h3 className="text-xs font-extrabold uppercase tracking-wider">1. Personal & Contact Details</h3>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Email Address <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ramesh@domain.com"
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none transition-colors ${
-                  fieldErrors.email ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
-                }`}
-              />
-              {fieldErrors.email && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.email}</p>}
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Ramesh Verma"
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm outline-none transition-colors ${
+                    fieldErrors.name ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
+                  }`}
+                />
+                {fieldErrors.name && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.name}</p>}
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none transition-colors ${
-                  fieldErrors.password ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
-                }`}
-              />
-              {fieldErrors.password && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.password}</p>}
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@domain.com"
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm outline-none transition-colors ${
+                    fieldErrors.email ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
+                  }`}
+                />
+                {fieldErrors.email && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.email}</p>}
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Mobile Number (10 Digits) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="9876543210"
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none transition-colors ${
-                  fieldErrors.phone ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
-                }`}
-              />
-              {fieldErrors.phone && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.phone}</p>}
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm outline-none transition-colors ${
+                    fieldErrors.password ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
+                  }`}
+                />
+                {fieldErrors.password && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.password}</p>}
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                City <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Mumbai"
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none transition-colors ${
-                  fieldErrors.city ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
-                }`}
-              />
-              {fieldErrors.city && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.city}</p>}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                6-Digit Postal Pincode <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="e.g. 400001"
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none transition-colors ${
-                  fieldErrors.pincode ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
-                }`}
-              />
-              {fieldErrors.pincode && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.pincode}</p>}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Mobile Number (10 Digits) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="9876543210"
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm outline-none transition-colors ${
+                    fieldErrors.phone ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
+                  }`}
+                />
+                {fieldErrors.phone && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.phone}</p>}
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Residential Address <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Building name, street, locality..."
-              className={`w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none transition-colors ${
-                fieldErrors.address ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
-              }`}
-            />
-            {fieldErrors.address && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.address}</p>}
+          {/* 4. SECTION: LOCATION & ADDRESS */}
+          <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-4">
+            <div className="flex items-center gap-2 text-slate-800 border-b border-slate-100 pb-2.5">
+              <MapPin className="w-4 h-4 text-teal-600" />
+              <h3 className="text-xs font-extrabold uppercase tracking-wider">2. Location & Address</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  City <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g. Mumbai, New Delhi, Bengaluru"
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm outline-none transition-colors ${
+                    fieldErrors.city ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
+                  }`}
+                />
+                {fieldErrors.city && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.city}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  6-Digit Postal Pincode <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="e.g. 400001"
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm outline-none transition-colors ${
+                    fieldErrors.pincode ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
+                  }`}
+                />
+                {fieldErrors.pincode && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.pincode}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Residential Street Address <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Flat/House No., Building, Street Name, Locality..."
+                className={`w-full px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm outline-none transition-colors ${
+                  fieldErrors.address ? 'border-red-400 bg-red-50/50' : 'border-slate-200 focus:ring-2 focus:ring-teal-600'
+                }`}
+              />
+              {fieldErrors.address && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.address}</p>}
+            </div>
           </div>
 
-          {/* WORKER SPECIFIC FORM SECTION (MANDATORY DOCUMENT UPLOAD & AADHAAR) */}
+          {/* 5. ROLE-SPECIFIC CARD: WORKER (Aadhaar, Verification, Categories, Rate Floor) */}
           {role === 'worker' && (
-            <div className="p-6 bg-teal-50/70 border border-teal-200 rounded-2xl space-y-5">
+            <div className="p-6 bg-teal-50/60 border border-teal-200 rounded-3xl space-y-5">
               <div className="flex items-center justify-between border-b border-teal-200 pb-3">
-                <div className="flex items-center gap-2 text-teal-900">
+                <div className="flex items-center gap-2 text-teal-950">
                   <Building2 className="w-5 h-5 text-teal-700" />
-                  <h3 className="font-extrabold text-sm uppercase tracking-wider">Mandatory Worker Identity Verification</h3>
+                  <h3 className="font-extrabold text-sm uppercase tracking-wider">
+                    3. Worker Identity & Cooperative Credentials
+                  </h3>
                 </div>
-                <span className="px-2.5 py-0.5 bg-red-100 text-red-800 text-[10px] font-bold rounded-full border border-red-200">
-                  Document Upload Required
+                <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-[10px] font-bold rounded-full border border-teal-200">
+                  Document Verified
                 </span>
               </div>
 
-              {/* Mandatory Aadhaar Number */}
+              {/* 12-Digit Aadhaar Input */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                   12-Digit Aadhaar Card Number <span className="text-red-500">*</span>
@@ -570,17 +645,11 @@ const Register = () => {
                 {fieldErrors.aadhaarNumber && <p className="text-[11px] font-bold text-red-600 mt-1">{fieldErrors.aadhaarNumber}</p>}
               </div>
 
-              {/* Mandatory File Upload Box for Worker ID with AI Verification */}
+              {/* Document Upload Box with OCR Verification */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 uppercase">
-                    Upload Aadhaar Card (Image/PDF) <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[10px] font-extrabold text-teal-700 flex items-center gap-1 bg-teal-100 px-2 py-0.5 rounded-full">
-                    <Sparkles className="w-3 h-3 text-teal-600 animate-spin" />
-                    AI Fraud & Document Verification Active
-                  </span>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Upload Aadhaar Card (Image/PDF) <span className="text-red-500">*</span>
+                </label>
 
                 <div
                   className={`relative p-5 border-2 border-dashed rounded-2xl text-center space-y-3 transition-all ${
@@ -597,11 +666,11 @@ const Register = () => {
                         <Scan className="w-6 h-6 animate-spin" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-teal-900 uppercase tracking-wide">
-                          🤖 SevaAI Document Scanner In Progress...
+                        <h4 className="text-xs font-bold text-teal-900 uppercase tracking-wide">
+                          Validating Document...
                         </h4>
                         <p className="text-[11px] text-teal-700 mt-0.5">
-                          Checking UIDAI layout, government emblems, and Aadhaar card authenticity
+                          Please wait while we verify your Aadhaar document
                         </p>
                       </div>
                       <div className="w-48 h-1.5 bg-teal-200 rounded-full mx-auto overflow-hidden">
@@ -609,45 +678,30 @@ const Register = () => {
                       </div>
                     </div>
                   ) : aiVerificationResult?.isValid ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3.5 bg-emerald-100/80 border border-emerald-300 rounded-xl text-emerald-900 text-left">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-extrabold text-xs text-emerald-950">
-                                Verified Official Aadhaar Card ✅
-                              </span>
-                              <span className="text-[9px] font-bold bg-emerald-700 text-white px-2 py-0.5 rounded-full">
-                                {aiVerificationResult.confidenceScore ? `${Math.round(aiVerificationResult.confidenceScore * 100)}% Match` : 'Verified'}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-emerald-800 font-medium truncate max-w-xs mt-0.5">
-                              {idDocumentName || 'Aadhaar_Document_Verified.jpg'}
-                            </p>
-                          </div>
+                    <div className="flex items-center justify-between p-3.5 bg-emerald-100/80 border border-emerald-300 rounded-xl text-emerald-900 text-left">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                        <div>
+                          <span className="font-extrabold text-xs text-emerald-950 block">
+                            Verified Official Aadhaar Card ✅
+                          </span>
+                          <p className="text-[11px] text-emerald-800 font-medium truncate max-w-xs mt-0.5">
+                            {idDocumentName || 'Aadhaar_Document_Verified.jpg'}
+                          </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAiVerificationResult(null);
-                            setIdDocumentName('');
-                            setIdDocumentBase64('');
-                            setIdDocumentFile(null);
-                          }}
-                          className="px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors"
-                        >
-                          Change
-                        </button>
                       </div>
-
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-left text-[11px] text-emerald-800 flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span>AI Model: <strong>{aiVerificationResult.aiModel || 'Gemini 1.5 Flash Vision'}</strong></span>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-700">Anti-Fraud Checked</span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiVerificationResult(null);
+                          setIdDocumentName('');
+                          setIdDocumentBase64('');
+                          setIdDocumentFile(null);
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
+                      >
+                        Change
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -657,7 +711,7 @@ const Register = () => {
                           Click to select or drag & drop Aadhaar Card file
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Supports JPG, PNG, WEBP, or PDF (Max 5MB) • <strong>AI will verify authenticity</strong>
+                          Supports JPG, PNG, WEBP, or PDF (Max 5MB)
                         </p>
                       </div>
 
@@ -692,7 +746,7 @@ const Register = () => {
                 </select>
               </div>
 
-              {/* Multi-Select Categories */}
+              {/* Multi-Select Category Pills */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                   Service Categories (Select all that apply) <span className="text-red-500">*</span>
@@ -705,7 +759,7 @@ const Register = () => {
                         type="button"
                         key={cat._id}
                         onClick={() => handleCategoryToggle(cat.name)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                           isSel
                             ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
                             : 'bg-white text-slate-700 border-slate-200 hover:border-teal-400'
@@ -722,7 +776,7 @@ const Register = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Your Hourly / Per-Service Rate (₹) <span className="text-red-500">*</span>
+                    Your Hourly / Per-Job Rate (₹) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -738,7 +792,7 @@ const Register = () => {
                   ) : (
                     <p className="text-[11px] font-bold text-amber-700 mt-1 flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
-                      Admin Fair Wage Floor: ₹{currentMinWageFloor}/hr
+                      Admin Minimum Fair Wage Floor: ₹{currentMinWageFloor}/hr
                     </p>
                   )}
                 </div>
@@ -774,13 +828,94 @@ const Register = () => {
             </div>
           )}
 
+          {/* 6. ROLE-SPECIFIC CARD: SOCIETY ADMIN */}
+          {role === 'societyAdmin' && (
+            <div className="p-6 bg-blue-50/60 border border-blue-200 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2 text-blue-950 border-b border-blue-200 pb-3">
+                <Building2 className="w-5 h-5 text-blue-700" />
+                <h3 className="font-extrabold text-sm uppercase tracking-wider">
+                  3. Society Administration Assignment
+                </h3>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Select Labour Cooperative Society to Govern <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedSocietyId}
+                  onChange={(e) => setSelectedSocietyId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-600 outline-none"
+                >
+                  {societies.map((soc) => (
+                    <option key={soc._id} value={soc._id}>
+                      {soc.name} ({soc.city} - Society Code: {soc.code})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-blue-700 mt-1">
+                  You will manage registrations, verify worker IDs, and set fair wage floors for this society.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Official Designation</label>
+                <input
+                  type="text"
+                  value={adminDesignation}
+                  onChange={(e) => setAdminDesignation(e.target.value)}
+                  placeholder="e.g. Society Secretary / Executive Officer"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 7. ROLE-SPECIFIC CARD: FEDERATION ADMIN */}
+          {role === 'federationAdmin' && (
+            <div className="p-6 bg-purple-50/60 border border-purple-200 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2 text-purple-950 border-b border-purple-200 pb-3">
+                <Crown className="w-5 h-5 text-purple-700" />
+                <h3 className="font-extrabold text-sm uppercase tracking-wider">
+                  3. Federation Directorate Verification
+                </h3>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Federation Authorization Key (Demo: FED2026)
+                </label>
+                <input
+                  type="text"
+                  value={federationCode}
+                  onChange={(e) => setFederationCode(e.target.value)}
+                  placeholder="Enter federation authorization passkey..."
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-purple-600"
+                />
+                <p className="text-[11px] text-purple-700 mt-1">
+                  Federation Admins have access to cross-society demand forecasting, AI analytics, and society onboarding.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl shadow-md transition-all"
+            className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-teal-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            {loading ? 'Validating & Registering...' : `Complete ${role === 'worker' ? 'Worker' : 'Customer'} Registration`}
+            {loading ? 'Validating & Registering...' : `Complete ${roleConfigs.find((r) => r.id === role)?.title} Registration`}
+            <ChevronRight className="w-4 h-4" />
           </button>
+
+          {/* Login Link */}
+          <p className="text-center text-xs text-slate-500">
+            Already have an account?{' '}
+            <Link to="/login" className="font-bold text-teal-700 hover:underline">
+              {t('login')} here
+            </Link>
+          </p>
         </form>
       </div>
 
@@ -788,26 +923,20 @@ const Register = () => {
       {showRejectionModal && (
         <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-red-200 text-center animate-in fade-in zoom-in-95 duration-200 space-y-5">
-            {/* Top Icon */}
             <div className="w-16 h-16 bg-red-100 border-4 border-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
               <ShieldAlert className="w-8 h-8" />
             </div>
 
-            {/* Title & Badge */}
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 text-xs font-extrabold rounded-full border border-red-200 mb-2">
                 <FileWarning className="w-3.5 h-3.5" />
-                AI Fraud Check Failed
+                Document Verification Failed
               </div>
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
                 Not Identified as Aadhaar Card
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Detected as: <strong className="text-slate-800">{detectedDocType}</strong>
-              </p>
             </div>
 
-            {/* Explanation Box */}
             <div className="p-4 bg-red-50/70 border border-red-200 rounded-2xl text-left space-y-2">
               <p className="text-xs text-red-900 font-semibold leading-relaxed">
                 {rejectionReason}
@@ -822,7 +951,6 @@ const Register = () => {
               </div>
             </div>
 
-            {/* Action Button */}
             <button
               type="button"
               onClick={() => setShowRejectionModal(false)}

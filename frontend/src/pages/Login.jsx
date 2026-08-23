@@ -80,55 +80,41 @@ const Login = () => {
           )}
 
           {/* Quick Demo Credentials Autofill Box */}
-          <div className="bg-amber-50/70 border border-amber-200 p-4 rounded-2xl space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              Autofill Demo Credentials into Form:
+          <div className="bg-amber-50/70 border border-amber-200 p-4 rounded-2xl space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                Autofill Demo Role Credentials:
+              </span>
+              <span className="text-[10px] text-amber-700 font-semibold">1-Tap Fill</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('customer@sevasetu.org', 'password123', 'Customer')}
-                className="px-2.5 py-1.5 bg-white hover:bg-amber-100 text-slate-800 border border-amber-200 rounded-lg text-left transition-colors truncate"
-              >
-                👤 Customer
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('worker.ramesh@sevasetu.org', 'password123', 'Approved Worker')}
-                className="px-2.5 py-1.5 bg-white hover:bg-amber-100 text-slate-800 border border-amber-200 rounded-lg text-left transition-colors truncate"
-              >
-                🛠 Worker (Approved)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('worker.pending@sevasetu.org', 'password123', 'Pending Worker')}
-                className="px-2.5 py-1.5 bg-white hover:bg-amber-100 text-slate-800 border border-amber-200 rounded-lg text-left transition-colors truncate"
-              >
-                ⏳ Worker (Pending)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('societyadmin@sevasetu.org', 'password123', 'Mumbai Society Admin')}
-                className="px-2.5 py-1.5 bg-white hover:bg-amber-100 text-slate-800 border border-amber-200 rounded-lg text-left transition-colors truncate"
-              >
-                🏢 Mumbai Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('delhi.admin@sevasetu.org', 'password123', 'Delhi Society Admin')}
-                className="px-2.5 py-1.5 bg-white hover:bg-amber-100 text-slate-800 border border-amber-200 rounded-lg text-left transition-colors truncate"
-              >
-                🏛 Delhi Admin
-              </button>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {[
+                { id: 'customer', label: '👤 Customer', email: 'customer@sevasetu.org', password: 'password123', name: 'Customer' },
+                { id: 'worker_approved', label: '🛠 Worker (Approved)', email: 'worker.ramesh@sevasetu.org', password: 'password123', name: 'Approved Worker' },
+                { id: 'worker_pending', label: '⏳ Worker (Pending)', email: 'worker.pending@sevasetu.org', password: 'password123', name: 'Pending Worker' },
+                { id: 'admin_mumbai', label: '🏢 Admin (Mumbai)', email: 'societyadmin@sevasetu.org', password: 'password123', name: 'Admin (Mumbai)' },
+                { id: 'admin_delhi', label: '🏛 Admin (Delhi)', email: 'delhi.admin@sevasetu.org', password: 'password123', name: 'Admin (Delhi)' },
+                { id: 'super_admin', label: '👑 Super Admin', email: 'fedadmin@sevasetu.org', password: 'password123', name: 'Super Admin' },
+              ].map((acc) => {
+                const isSelected = email.toLowerCase().trim() === acc.email.toLowerCase();
+                return (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => handleFillDemo(acc.email, acc.password, acc.name)}
+                    className={`px-2.5 py-2 rounded-xl text-left transition-all truncate cursor-pointer font-bold border ${
+                      isSelected
+                        ? 'bg-slate-900 text-amber-300 border-slate-950 shadow-md ring-2 ring-teal-600 ring-offset-1 scale-[1.02]'
+                        : 'bg-white hover:bg-amber-100/70 text-slate-800 border-amber-200 hover:border-amber-300 shadow-2xs'
+                    }`}
+                  >
+                    {acc.label}
+                  </button>
+                );
+              })}
             </div>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('fedadmin@sevasetu.org', 'password123', 'Federation Admin')}
-              className="w-full px-2.5 py-1.5 bg-teal-800 text-white hover:bg-teal-900 rounded-lg text-xs font-bold text-center transition-colors"
-            >
-              👑 Federation Admin (Super Admin)
-            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -145,7 +131,15 @@ const Login = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase">Password</label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-bold text-teal-700 hover:text-teal-900 hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
               <input
                 type="password"
                 value={password}
@@ -159,7 +153,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading ? (
                 <span>Authenticating...</span>
