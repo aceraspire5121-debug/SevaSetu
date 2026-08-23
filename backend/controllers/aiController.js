@@ -328,6 +328,12 @@ Respond strictly in valid JSON only (no extra text):
 
         if (geminiData.status !== 200) {
           console.warn('Gemini API returned error:', geminiData.status, geminiData.data);
+          if (geminiData.status === 429) {
+            return res.status(429).json({
+              success: false,
+              message: 'Google Gemini Free Tier Rate Limit hit (Max 20 scans per minute). Please wait 30-40 seconds and try again.',
+            });
+          }
           return res.status(500).json({
             success: false,
             message: `Google Gemini API Error (${geminiData.status}): ${geminiData.data?.error?.message || 'Failed to analyze image.'}`,
