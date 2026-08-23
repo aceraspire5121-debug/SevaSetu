@@ -30,14 +30,12 @@ const Navbar = () => {
   const location = useLocation();
 
   const [showVideoModal, setShowVideoModal] = useState(false);
-  // From feature-shashwat-2: profile dropdown + live bookings badge
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [activeBookingsCount, setActiveBookingsCount] = useState(0);
-  const profileDropdownRef = useRef(null);
-  // From main: mobile drawer
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
 
-  // Live Active Bookings Count (feature-shashwat-2)
+  // Live Active Bookings Count (polls every 8s)
   useEffect(() => {
     if (!user) { setActiveBookingsCount(0); return; }
     const fetchActiveBookings = async () => {
@@ -58,7 +56,7 @@ const Navbar = () => {
     return () => clearInterval(pollInterval);
   }, [user]);
 
-  // Close profile dropdown on outside click (feature-shashwat-2)
+  // Close profile dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
@@ -69,7 +67,7 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Smooth scroll to services section (feature-shashwat-2)
+  // Smooth scroll to services section
   const handleServicesClick = (e) => {
     e.preventDefault();
     if (location.pathname === '/') {
@@ -79,7 +77,7 @@ const Navbar = () => {
     }
   };
 
-  // Role-based video call handler (main)
+  // Role-based video call handler
   const handleOpenVideoCall = () => {
     if (!user) { navigate('/login'); return; }
     if (user.role === 'worker') return;
@@ -109,12 +107,12 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Glassmorphic Header (main's modern style) */}
+      {/* Glassmorphic Sticky Header */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-200/80 shadow-xs font-sans transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center gap-4">
 
-            {/* Logo (main's gradient style) */}
+            {/* Logo */}
             <Link to={user?.role === 'worker' ? '/worker-dashboard' : '/'} className="flex items-center gap-2.5 group shrink-0">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-all">
                 <HeartHandshake className="w-5 h-5 text-white" />
@@ -167,7 +165,7 @@ const Navbar = () => {
             {/* Desktop Right Actions */}
             <div className="hidden md:flex items-center gap-3 shrink-0">
 
-              {/* Video Help (hidden for workers) */}
+              {/* Video Help — hidden for workers */}
               {user?.role !== 'worker' && (
                 <button
                   type="button"
@@ -192,7 +190,7 @@ const Navbar = () => {
 
               {user ? (
                 <div className="flex items-center gap-2.5">
-                  {/* Live Active Bookings Cart Badge (feature-shashwat-2) */}
+                  {/* Live Bookings Cart Badge */}
                   <Link
                     to="/my-bookings"
                     className="relative p-2.5 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-800 transition-all flex items-center justify-center cursor-pointer shadow-2xs"
@@ -206,7 +204,7 @@ const Navbar = () => {
                     )}
                   </Link>
 
-                  {/* Profile Dropdown (feature-shashwat-2) */}
+                  {/* Profile Dropdown */}
                   <div className="relative" ref={profileDropdownRef}>
                     <button
                       type="button"
@@ -259,16 +257,10 @@ const Navbar = () => {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-xs font-black text-slate-700 hover:text-teal-700 rounded-xl hover:bg-slate-100 transition-colors"
-                  >
+                  <Link to="/login" className="px-4 py-2 text-xs font-black text-slate-700 hover:text-teal-700 rounded-xl hover:bg-slate-100 transition-colors">
                     {t('login')}
                   </Link>
-                  <Link
-                    to="/register"
-                    className="px-4 py-2 text-xs font-black text-white bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 rounded-xl shadow-sm transition-all"
-                  >
+                  <Link to="/register" className="px-4 py-2 text-xs font-black text-white bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 rounded-xl shadow-sm transition-all">
                     {t('register')}
                   </Link>
                 </div>
@@ -296,7 +288,7 @@ const Navbar = () => {
         </div>
       </header>
 
-      {/* SLIDING MOBILE DRAWER (main) */}
+      {/* SLIDING MOBILE DRAWER */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex justify-end">
           <div
@@ -445,7 +437,7 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* BOTTOM FLOATING DOCK (main) */}
+      {/* STICKY BOTTOM MOBILE DOCK */}
       <div className="fixed bottom-3 inset-x-3 z-40 md:hidden bg-slate-950/90 text-white backdrop-blur-xl border border-slate-800/80 rounded-full px-2 py-2 shadow-2xl flex justify-around items-center text-[10px] font-bold">
         {user?.role !== 'worker' && (
           <>
