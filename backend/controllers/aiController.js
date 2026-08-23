@@ -214,34 +214,48 @@ exports.diagnoseProblemImage = async (req, res) => {
       let mimeType = image.includes('data:') ? image.split(';')[0].replace('data:', '') : 'image/jpeg';
       if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
 
-      const prompt = `You are the AI Problem Diagnostic & Cost Estimation Engine for SevaSetu — an Indian Home Services platform for Electrician, Plumber, AC Technician, Painter, Carpenter, and House Cleaning services.
+      const prompt = `You are the AI Problem Diagnostic & Cost Estimation Engine for SevaSetu — an Indian Home Services platform.
 
-STEP 1 — STRICT IMAGE VALIDATION (DO THIS FIRST):
-Before anything else, check if this image shows a real home services problem. Valid images include:
-- Broken/burnt/loose electrical switchboards, sockets, wires, MCB boards
-- Leaking pipes, dripping taps, burst plumbing joints, waterlogged sinks
-- Dirty/dusty AC units, broken appliances (fridge, washing machine, geyser)
-- Damp/peeling/cracked walls, water seepage stains, flaking paint
-- Broken doors, loose hinges, damaged wooden furniture, stuck drawers
-- Dirty floors, stained tiles, bathroom lime scale, grease in kitchen
+STEP 1 — IMAGE RELEVANCE CHECK (STRICT):
+Decide if this image is related to a home, building, or property problem/maintenance task.
 
-If the image shows ANYTHING ELSE (food, animals, people, selfies, landscapes, vehicles, text, art, random objects like ice cream, scenery, plants, products, screenshots etc.) — it is REJECTED.
+✅ ACCEPT the image if it shows ANY of the following (even partially visible):
+- Electrical: switchboards, sockets, wires, MCB, fuse box, fans, tube lights
+- Plumbing: taps, pipes, drains, sinks, toilets, water tanks, geysers, water damage
+- Appliances: AC units, refrigerators, washing machines, ovens, water purifiers
+- Walls/Surfaces: damp patches, cracks, seepage, peeling paint, whitewash, putty
+- Woodwork: doors, windows, hinges, almirahs, drawers, shelves, cabinets
+- Flooring/Cleaning: stained tiles, grout, bathroom scale, kitchen grease, dirty surfaces
+- General property issues: rust on gates/grills, pest damage, roof cracks, balcony damage, broken fittings of any kind inside or outside a home/building
 
-If image is NOT related to home services, respond ONLY with this JSON and nothing else:
+✅ ALSO ACCEPT edge cases that are home/property related even if the exact category isn't listed — map to the nearest available category.
+
+❌ REJECT ONLY if the image is clearly unrelated to home/property:
+Examples of what to REJECT: food/drinks, animals/pets, people/portraits/selfies, nature/scenery/sky, vehicles/cars, clothing, gadgets like phones/laptops, screenshots/text/documents, artwork, random products.
+
+If REJECTED, respond ONLY with:
 {
   "rejected": true,
-  "rejectionReason": "This image does not appear to show a home repair or service issue. Please upload a clear photo of the broken or damaged item you need fixed (e.g. switchboard, leaking tap, AC unit, damp wall, etc.)"
+  "rejectionReason": "This image does not appear to show a home repair or maintenance issue. Please upload a clear photo of the problem area in your home (e.g. broken switchboard, leaking pipe, damp wall, dusty AC, cracked tile, etc.)"
 }
 
-STEP 2 — ONLY IF IMAGE IS VALID, provide diagnosis:
+STEP 2 — IF IMAGE IS VALID, provide full diagnosis:
 Category hint: "${categoryHint || 'Auto'}". Extra context: "${description || fileName || 'None'}".
 
-Pricing rules (Indian Cooperative Fair-Wage):
-- Minor quick fix (loose switch, dripping tap, filter clean, door hinge): Labor ₹70–₹110, Spares ₹20–₹30. Total ₹99–₹140.
-- Standard repair (P-trap leak, 16A socket, AC foam wash, damp wall): Labor ₹150–₹220, Spares ₹60–₹120. Total ₹210–₹340.
-- Major repair (AC gas refill, MCB board, concealed pipe burst): Labor ₹280–₹380, Spares ₹150–₹290. Total ₹430–₹670.
+Category mapping rule: Map to the NEAREST available category even for non-standard issues:
+- Gate rust / grill repair → Carpenter
+- Pest damage / termite on wood → Carpenter
+- Roof crack / balcony seepage → Painter
+- Water purifier / geyser / washing machine → Technician
+- Clogged drain / toilet block → Plumber
+- Any other home issue → pick closest fit
 
-Respond strictly in valid JSON (no extra text):
+Pricing rules (Indian Cooperative Fair-Wage):
+- Minor quick fix: Labor ₹70–₹110, Spares ₹20–₹30. Total ₹99–₹140.
+- Standard repair: Labor ₹150–₹220, Spares ₹60–₹120. Total ₹210–₹340.
+- Major repair: Labor ₹280–₹380, Spares ₹150–₹290. Total ₹430–₹670.
+
+Respond strictly in valid JSON only (no extra text):
 {
   "rejected": false,
   "title": string,
