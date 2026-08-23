@@ -22,16 +22,19 @@ exports.getFederationDashboard = async (req, res, next) => {
       .filter((b) => b.paymentStatus === 'paid')
       .reduce((sum, b) => sum + (b.price || 0), 0);
 
-    // Category-wise worker counts
-    const categories = await Category.find();
-    const workers = await Worker.find().populate('user', 'name email phone city pincode profilePhoto idProofDocument role');
+    // Category-wise worker counts & wage floors
+    const categories = await Category.find().sort({ name: 1 });
+    const workers = await Worker.find()
+      .populate('user', 'name email phone city pincode profilePhoto idProofDocument role')
+      .populate('society');
 
     const categoryWorkerCounts = categories.map((cat) => {
       const catWorkers = workers.filter((w) => w.categories && w.categories.includes(cat.name));
       return {
+        _id: cat._id,
         categoryName: cat.name,
         icon: cat.icon,
-        minHourlyRate: cat.minHourlyRate,
+        minHourlyRate: cat.minHourlyRate || 150,
         totalWorkers: catWorkers.length,
         approvedWorkers: catWorkers.filter((w) => w.approvalStatus === 'approved').length,
         pendingWorkers: catWorkers.filter((w) => w.approvalStatus === 'pending').length,
@@ -135,6 +138,110 @@ exports.getWorkersByCategory = async (req, res, next) => {
       category: categoryName,
       count: workers.length,
       data: workers,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Super Admin: Get all workers nationwide with full Skill Passport & status
+// @route   GET /api/admin/workers/all
+// @access  Private (FederationAdmin)
+exports.getAllWorkersAdmin = async (req, res, next) => {
+  try {
+    const workers = await Worker.find()
+      .populate('user', '-password')
+      .populate('society')
+      .sort({ createdAt: -1 });
+
+    // Enrich with dynamic completed jobs count
+    const enrichedWorkers = await Promise.all(
+      workers.map(async (w) => {
+        const wObj = w.toObject();
+        if (w.user) {
+          const completedCount = await Booking.countDocuments({
+            worker: w.user._id,
+            status: 'completed',
+          });
+          if (wObj.skillPassport) {
+            wObj.skillPassport.completedJobsCount = completedCount;
+          }
+        }
+        return wObj;
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      count: enrichedWorkers.length,
+      data: enrichedWorkers,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Super Admin: Get all registered Society Admins & Federation staff
+// @route   GET /api/admin/admins/all
+// @access  Private (FederationAdmin)
+exports.getAllAdmins = async (req, res, next) => {
+  try {
+    const admins = await User.find({
+      role: { $in: ['societyAdmin', 'federationAdmin'] },
+    })
+      .populate('society')
+      .select('-password')
+      .sort({ role: 1, name: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: admins.length,
+      data: admins,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Super Admin: Fix / Update Minimum Fair Wage Floor for a Category
+// @route   PUT /api/admin/wage-floor/:id
+// @access  Private (FederationAdmin)
+exports.updateMinimumWageFloor = async (req, res, next) => {
+  try {
+    const { minHourlyRate } = req.body;
+
+    if (!minHourlyRate || Number(minHourlyRate) < 50) {
+      return res.status(400).json({
+        success: false,
+        message: 'Minimum wage floor must be at least ₹50/hour.',
+      });
+    }
+
+    const category = await Category.findByIdAndUpdate(
+      req.params.id,
+      { minHourlyRate: Number(minHourlyRate) },
+      { new: true }
+    );
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    // Auto-elevate any existing worker in this category whose hourly rate is below the new minimum wage floor
+    await Worker.updateMany(
+      {
+        categories: { $in: [category.name] },
+        hourlyRate: { $lt: Number(minHourlyRate) },
+      },
+      {
+        $set: { hourlyRate: Number(minHourlyRate) },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Minimum fair-wage floor for ${category.name} set to ₹${minHourlyRate}/hr. All active workers updated.`,
+      data: category,
     });
   } catch (error) {
     next(error);

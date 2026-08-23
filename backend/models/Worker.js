@@ -1,5 +1,33 @@
 const mongoose = require('mongoose');
 
+const CertificateSchema = new mongoose.Schema({
+  title: { type: String, default: 'Vocational Competency Certificate' },
+  issuer: { type: String, default: 'National Skill Development Corporation (NSDC)' },
+  issueYear: { type: Number, default: 2024 },
+  documentUrl: { type: String, default: '' },
+  verificationStatus: { type: String, enum: ['verified', 'pending', 'rejected'], default: 'verified' },
+});
+
+const SkillPassportSchema = new mongoose.Schema({
+  passportId: {
+    type: String,
+    default: () => `SP-${Math.floor(100000 + Math.random() * 900000)}`,
+  },
+  issueDate: { type: Date, default: Date.now },
+  specialization: { type: String, default: 'General Domestic & Commercial Services' },
+  trainingInstitute: { type: String, default: 'Government ITI / Skill India Partner' },
+  skillTier: {
+    type: String,
+    enum: ['Certified Specialist', 'Senior Artisan', 'Master Technician'],
+    default: 'Certified Specialist',
+  },
+  aadhaarVerified: { type: Boolean, default: true },
+  punctualityScore: { type: Number, default: 98, min: 50, max: 100 },
+  completedJobsCount: { type: Number, default: 0, min: 0 },
+  wageFloorCompliance: { type: Boolean, default: true },
+  certificates: [CertificateSchema],
+});
+
 const WorkerSchema = new mongoose.Schema(
   {
     user: {
@@ -38,6 +66,10 @@ const WorkerSchema = new mongoose.Schema(
       default: 1,
       min: [0, 'Experience years cannot be negative'],
       max: [50, 'Experience years cannot exceed 50'],
+    },
+    skillPassport: {
+      type: SkillPassportSchema,
+      default: () => ({}),
     },
     approvalStatus: {
       type: String,

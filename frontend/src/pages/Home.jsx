@@ -50,6 +50,12 @@ const Home = () => {
 
   useEffect(() => {
     fetchCategories();
+    if (window.location.hash === '#new-and-noteworthy') {
+      setTimeout(() => {
+        const el = document.getElementById('new-and-noteworthy');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 350);
+    }
   }, []);
 
   // Close dropdown on outside click
@@ -778,7 +784,7 @@ const Home = () => {
       </section>
 
       {/* 5. "NEW AND NOTEWORTHY" CAROUSEL/GRID */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <section id="new-and-noteworthy" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 scroll-mt-24">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">{t('newAndNoteworthy')}</h2>

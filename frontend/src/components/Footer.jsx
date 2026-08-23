@@ -29,20 +29,18 @@ const Footer = () => {
   return (
     <footer className="bg-[#f5f5f5] text-slate-700 border-t border-slate-200 mt-auto font-sans relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Brand Logo Header */}
+        {/* Brand Logo Header (Matching Screenshot 2: [SS] SevaSetu •) */}
         <div className="mb-10">
-          <Link to="/" className="inline-flex items-center gap-3 group">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-600 to-teal-500 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform shrink-0">
-              <HeartHandshake className="w-6 h-6" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-black text-teal-950 tracking-tight leading-none">
-                SevaSetu
-              </span>
-              <span className="text-[10px] sm:text-[11px] font-bold text-amber-600 tracking-wider uppercase mt-1">
-                COOPERATIVE HOME SERVICES PLATFORM
+          <Link to="/" className="inline-flex items-center gap-2.5 group">
+            <div className="w-10 h-10 rounded-2xl bg-black flex items-center justify-center shadow-md group-hover:scale-105 transition-transform shrink-0">
+              <span className="text-white font-black text-sm tracking-wider font-sans select-none">
+                SS
               </span>
             </div>
+            <span className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-1">
+              SevaSetu
+              <span className="w-2 h-2 rounded-full bg-teal-600" />
+            </span>
           </Link>
         </div>
 

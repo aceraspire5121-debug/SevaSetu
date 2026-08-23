@@ -372,13 +372,25 @@ exports.updateBookingStatus = async (req, res, next) => {
     booking.status = status;
     await booking.save();
 
-    // Auto-manage worker availability status
+    // Auto-manage worker availability status and sync skill passport completed jobs
     if (status === 'accepted') {
       await Worker.findOneAndUpdate(
         { user: booking.worker },
         { availabilityStatus: 'busy' }
       );
-    } else if (['completed', 'rejected', 'cancelled'].includes(status)) {
+    } else if (status === 'completed') {
+      const completedCount = await Booking.countDocuments({
+        worker: booking.worker,
+        status: 'completed',
+      });
+      await Worker.findOneAndUpdate(
+        { user: booking.worker },
+        {
+          availabilityStatus: 'available',
+          'skillPassport.completedJobsCount': completedCount,
+        }
+      );
+    } else if (['rejected', 'cancelled'].includes(status)) {
       await Worker.findOneAndUpdate(
         { user: booking.worker },
         { availabilityStatus: 'available' }
