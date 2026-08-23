@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const User = require('../models/User');
 const Worker = require('../models/Worker');
 const Society = require('../models/Society');
 const Category = require('../models/Category');
+const { sendEmail, generatePasswordResetEmailHtml } = require('../utils/sendEmail');
 
 // Send token response with user & worker details
 const sendTokenResponse = async (user, statusCode, res) => {
@@ -154,7 +156,7 @@ exports.register = async (req, res, next) => {
       profilePhoto: profilePhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
       idProofDocument: idProofDocument || '',
       aadhaarNumber: req.body.aadhaarNumber || '',
-      society: role === 'worker' ? societyId : undefined,
+      society: (role === 'worker' || role === 'societyAdmin') ? societyId : undefined,
     });
 
     // If role is worker, create Worker profile
@@ -273,6 +275,132 @@ exports.updateProfile = async (req, res, next) => {
       success: true,
       user,
       worker: workerProfile,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Forgot Password - Send reset link to email via Brevo
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    console.log('\n[Forgot Password] Incoming request for email:', email);
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid registered email address' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      console.log(`⚠️ [Forgot Password] User with email "${cleanEmail}" NOT FOUND in database.`);
+      // Return safe message without exposing whether user exists
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a password reset link has been sent.',
+      });
+    }
+
+    console.log(`✓ [Forgot Password] User found: ${user.name} (${user._id})`);
+
+    // Get reset token
+    const resetToken = user.getResetPasswordToken();
+    await user.save({ validateBeforeSave: false });
+
+    // Create reset URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+    console.log(`🔗 [Forgot Password] Generated Reset Link:\n${resetUrl}\n`);
+
+    const emailHtml = generatePasswordResetEmailHtml({
+      name: user.name,
+      resetUrl,
+      userEmail: user.email,
+    });
+
+    try {
+      await sendEmail({
+        email: user.email,
+        name: user.name,
+        subject: '🔐 SevaSetu Password Reset Request (Valid for 15 mins)',
+        html: emailHtml,
+        resetUrl,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Password reset link has been sent to your email. Please check your inbox.',
+      });
+    } catch (err) {
+      console.error('❌ [Forgot Password] Email send failed:', err.message);
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      return res.status(500).json({
+        success: false,
+        message: err.message || 'Email could not be sent. Please check your Brevo credentials.',
+      });
+    }
+  } catch (error) {
+    console.error('❌ [Forgot Password Server Error]:', error);
+    next(error);
+  }
+};
+
+// @desc    Reset Password using token
+// @route   PUT /api/auth/reset-password/:token
+// @access  Public
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long',
+      });
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match. Please re-enter carefully.',
+      });
+    }
+
+    // Get hashed token
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired password reset link. Please request a new one.',
+      });
+    }
+
+    // Set new password
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password has been updated successfully! You can now log in.',
     });
   } catch (error) {
     next(error);

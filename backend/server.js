@@ -46,6 +46,7 @@ app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/societies', require('./routes/societyRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
 
 // Error Handler Middleware
 app.use(errorHandler);

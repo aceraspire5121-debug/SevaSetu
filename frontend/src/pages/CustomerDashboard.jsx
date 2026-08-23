@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import api from '../utils/api';
@@ -14,21 +15,67 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  LogIn,
+  UserPlus,
+  X,
+  Camera,
+  Sparkles,
+  Video,
 } from 'lucide-react';
+import AiDiagnosticModal from '../components/AiDiagnosticModal';
+import InstantVideoCallModal from '../components/InstantVideoCallModal';
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters & Sorting
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [searchCity, setSearchCity] = useState(user?.city || 'Mumbai');
+  // Login Prompt Modal State (For Guest Users trying to book)
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingWorker, setPendingWorker] = useState(null);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+
+  // Filters & Sorting (Initialized directly from URL params)
+  const initialCategory = searchParams.get('category') || searchParams.get('search') || '';
+  const initialLocation = searchParams.get('location') || '';
+  const diagnosedIssue = searchParams.get('issue') || '';
+
+  // Extract City / Region from full address
+  const extractCityName = (locStr) => {
+    if (!locStr) return '';
+    const text = locStr.toLowerCase();
+    if (text.includes('delhi') || text.includes('saket') || text.includes('cp') || text.includes('connaught') || text.includes('mayur vihar')) return 'Delhi';
+    if (text.includes('ghaziabad') || text.includes('abes') || text.includes('lal kuan') || text.includes('chipiyana')) return 'Ghaziabad';
+    if (text.includes('noida') || text.includes('atta') || text.includes('sector')) return 'Noida';
+    if (text.includes('gurgaon') || text.includes('gurugram') || text.includes('huda')) return 'Gurgaon';
+    if (text.includes('mumbai') || text.includes('kurla')) return 'Mumbai';
+
+    const parts = locStr.split(',').map((s) => s.trim()).filter(Boolean);
+    return parts[parts.length - 1] || locStr;
+  };
+
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [searchCity, setSearchCity] = useState(initialLocation ? extractCityName(initialLocation) : (user?.city || ''));
   const [searchPincode, setSearchPincode] = useState('');
   const [sortBy, setSortBy] = useState('rating');
+
+  // Sync state if URL query params change
+  useEffect(() => {
+    const catParam = searchParams.get('category') || searchParams.get('search');
+    if (catParam !== null) {
+      setSelectedCategory(catParam);
+    }
+    const locParam = searchParams.get('location');
+    if (locParam) {
+      setSearchCity(extractCityName(locParam));
+    }
+  }, [searchParams]);
 
   // Pagination State for Workers
   const [workerPage, setWorkerPage] = useState(1);
@@ -105,14 +152,50 @@ const CustomerDashboard = () => {
     }
   };
 
-  const selectedCategoryObj = categories.find((c) => c.name === selectedCategory);
+  const handleCategorySelect = (catName) => {
+    setSelectedCategory(catName);
+    if (catName) {
+      setSearchParams({ category: catName });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const selectedCategoryObj = categories.find((c) => c.name?.toLowerCase() === selectedCategory?.toLowerCase());
+
+  // Strict Category Filter on Workers
+  const filteredWorkers = selectedCategory
+    ? workers.filter((w) =>
+        w.categories &&
+        w.categories.some((c) => c.toLowerCase().includes(selectedCategory.toLowerCase()))
+      )
+    : workers;
 
   // Pagination Calculations for Workers Grid
-  const totalWorkerPages = Math.ceil(workers.length / workersPerPage);
-  const paginatedWorkers = workers.slice(
+  const totalWorkerPages = Math.ceil(filteredWorkers.length / workersPerPage);
+  const paginatedWorkers = filteredWorkers.slice(
     (workerPage - 1) * workersPerPage,
     workerPage * workersPerPage
   );
+
+  // Initiate emergency booking - prompt login if unauthenticated
+  const handleOpenEmergency = () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    setShowEmergencyModal(true);
+  };
+
+  // Initiate standard booking - prompt login if unauthenticated
+  const handleInitiateBook = (wrk) => {
+    if (!user) {
+      setPendingWorker(wrk);
+      setShowLoginModal(true);
+      return;
+    }
+    setSelectedWorkerForBook(wrk);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -141,14 +224,54 @@ const CustomerDashboard = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowEmergencyModal(true)}
-          className="px-5 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-2xl shadow-md flex items-center gap-2 transition-all transform hover:scale-105"
-        >
-          <Zap className="w-4 h-4 fill-slate-950" />
-          {t('emergencyBooking')}
-        </button>
+        <div className="flex flex-wrap gap-2.5">
+          {/* AI Problem Scanner Button */}
+          <button
+            type="button"
+            onClick={() => setShowAiModal(true)}
+            className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs rounded-2xl border border-white/20 shadow-md flex items-center gap-2 transition-all hover:scale-105 cursor-pointer backdrop-blur-xs"
+          >
+            <Camera className="w-4 h-4 text-teal-300" />
+            <span>AI Problem Scanner</span>
+          </button>
+
+          {/* Emergency Booking Button */}
+          <button
+            type="button"
+            onClick={handleOpenEmergency}
+            className="px-5 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-2xl shadow-md flex items-center gap-2 transition-all transform hover:scale-105 cursor-pointer"
+          >
+            <Zap className="w-4 h-4 fill-slate-950" />
+            {t('emergencyBooking')}
+          </button>
+        </div>
       </div>
+
+      {/* AI Diagnosed Issue Notification Banner */}
+      {diagnosedIssue && (
+        <div className="p-4 bg-teal-50 border border-teal-200 rounded-2xl flex items-center justify-between shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+              <Sparkles className="w-4 h-4 fill-white" />
+            </div>
+            <div>
+              <span className="text-[10px] font-extrabold text-teal-800 uppercase tracking-wider">
+                AI Diagnosed Repair Filter Active:
+              </span>
+              <h4 className="text-xs font-bold text-slate-900">{diagnosedIssue}</h4>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchParams({ category: selectedCategory, location: searchCity });
+            }}
+            className="text-xs text-slate-500 hover:text-slate-900 font-bold underline cursor-pointer"
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
 
       {/* Filter & Search Bar */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
@@ -192,28 +315,35 @@ const CustomerDashboard = () => {
         {/* Category Pills Filter */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
           <button
-            onClick={() => setSelectedCategory('')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-              selectedCategory === ''
-                ? 'bg-teal-700 text-white border-teal-800'
+            onClick={() => handleCategorySelect('')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              !selectedCategory
+                ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
                 : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
             }`}
           >
             All Categories ({categories.length})
           </button>
-          {categories.map((cat) => (
-            <button
-              key={cat._id}
-              onClick={() => setSelectedCategory(cat.name)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                selectedCategory === cat.name
-                  ? 'bg-teal-700 text-white border-teal-800'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              {cat.name} (Floor: ₹{cat.minHourlyRate})
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const isSelected = selectedCategory && (
+              cat.name?.toLowerCase() === selectedCategory.toLowerCase() ||
+              cat.name?.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+              selectedCategory.toLowerCase().includes(cat.name?.toLowerCase())
+            );
+            return (
+              <button
+                key={cat._id}
+                onClick={() => handleCategorySelect(cat.name)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {cat.name} (Floor: ₹{cat.minHourlyRate})
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -224,10 +354,10 @@ const CustomerDashboard = () => {
             <h3 className="text-xl font-extrabold text-slate-900">
               Available Verified Workers {selectedCategory && `in ${selectedCategory}`}
             </h3>
-            {workers.length > 0 && (
+            {filteredWorkers.length > 0 && (
               <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                Showing {Math.min((workerPage - 1) * workersPerPage + 1, workers.length)}-
-                {Math.min(workerPage * workersPerPage, workers.length)} of {workers.length} Available Workers
+                Showing {Math.min((workerPage - 1) * workersPerPage + 1, filteredWorkers.length)}-
+                {Math.min(workerPage * workersPerPage, filteredWorkers.length)} of {filteredWorkers.length} Available Workers
               </p>
             )}
           </div>
@@ -239,7 +369,7 @@ const CustomerDashboard = () => {
               <div key={i} className="h-64 bg-slate-200 rounded-2xl animate-pulse" />
             ))}
           </div>
-        ) : workers.length === 0 ? (
+        ) : filteredWorkers.length === 0 ? (
           <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-slate-400 mx-auto" />
             <h4 className="font-bold text-slate-800 text-base">{t('noWorkersFound')}</h4>
@@ -255,7 +385,7 @@ const CustomerDashboard = () => {
                   key={w._id}
                   worker={w}
                   categoryMinWage={selectedCategoryObj?.minHourlyRate}
-                  onBook={(wrk) => setSelectedWorkerForBook(wrk)}
+                  onBook={(wrk) => handleInitiateBook(wrk)}
                 />
               ))}
             </div>
@@ -407,6 +537,68 @@ const CustomerDashboard = () => {
           }}
         />
       )}
+
+      {/* GUEST USER LOGIN REQUIRED MODAL (Appears ONLY when booking, NOT on browsing) */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-center p-6 sm:p-8 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-14 h-14 bg-teal-50 border-2 border-teal-200 text-teal-700 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+              <LogIn className="w-7 h-7" />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                Sign in to Book Service
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                You can browse and explore all cooperative services freely. Please sign in or create an account to confirm your booking and track your worker in real-time.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In to Account
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs uppercase tracking-wider rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 text-teal-700" />
+                Create New Account
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowLoginModal(false)}
+                className="w-full py-2.5 text-xs text-slate-400 hover:text-slate-600 font-semibold cursor-pointer"
+              >
+                Continue Browsing Services
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI DIAGNOSTIC MODAL */}
+      <AiDiagnosticModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        selectedLocation={searchCity}
+      />
+
+      {/* INSTANT VIDEO CALL MODAL */}
+      <InstantVideoCallModal
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        preselectedCategory={selectedCategory || 'Plumber'}
+      />
     </div>
   );
 };

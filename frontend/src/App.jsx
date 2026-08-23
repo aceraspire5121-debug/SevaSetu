@@ -10,8 +10,11 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import WorkerPendingApproval from './pages/WorkerPendingApproval';
 import CustomerDashboard from './pages/CustomerDashboard';
+import ServicePackageDetail from './pages/ServicePackageDetail';
 import MyBookings from './pages/MyBookings';
 import WorkerDashboard from './pages/WorkerDashboard';
 import SocietyAdminDashboard from './pages/SocietyAdminDashboard';
@@ -49,17 +52,15 @@ function AppRoutes() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/worker-pending" element={<WorkerPendingApproval />} />
 
-          {/* Clean URL for Service Discovery */}
-          <Route
-            path="/explore-services"
-            element={
-              <ProtectedRoute allowedRoles={['customer', 'worker', 'societyAdmin', 'federationAdmin']}>
-                <CustomerDashboard />
-              </ProtectedRoute>
-            }
-          />
+          {/* Dedicated Service Package Detail & Pricing Page (e.g. Full Home Deep Cleaning, AC Jet Service) */}
+          <Route path="/service-package/:slug" element={<ServicePackageDetail />} />
+
+          {/* Publicly Accessible Service Discovery (Browse freely without login) */}
+          <Route path="/explore-services" element={<CustomerDashboard />} />
           <Route path="/customer-dashboard" element={<Navigate to="/explore-services" replace />} />
 
           {/* Clean URL for Customer Activity & Bookings */}

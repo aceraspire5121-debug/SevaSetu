@@ -17,8 +17,8 @@ exports.getVerifiedWorkers = async (req, res, next) => {
       queryFilter.availabilityStatus = 'available';
     }
 
-    if (category) {
-      queryFilter.categories = { $in: [category] };
+    if (category && category !== 'All' && category !== 'all') {
+      queryFilter.categories = { $regex: new RegExp(category.trim(), 'i') };
     }
 
     let workers = await Worker.find(queryFilter)
@@ -28,11 +28,47 @@ exports.getVerifiedWorkers = async (req, res, next) => {
       })
       .populate('society');
 
-    // Filter by city or pincode if specified
-    if (city) {
-      workers = workers.filter(
-        (w) => w.user && w.user.city.toLowerCase().includes(city.toLowerCase())
-      );
+    // Filter by city, locality, or address if specified
+    if (city && city.trim() !== '') {
+      const cleanCity = city.trim().toLowerCase();
+      // Extract keywords if a full address string was passed
+      const keywords = cleanCity
+        .split(/[\s,–-]+/)
+        .map((k) => k.trim())
+        .filter((k) => k.length > 2 && !['block', 'near', 'flat', 'road', 'sector'].includes(k));
+
+      const matchedWorkers = workers.filter((w) => {
+        if (!w.user) return false;
+        const userCity = (w.user.city || '').toLowerCase();
+        const userAddr = (w.user.address || '').toLowerCase();
+        const societyName = (w.society?.name || '').toLowerCase();
+        const userPin = w.user.pincode || '';
+
+        // Direct containment
+        if (
+          userCity.includes(cleanCity) ||
+          cleanCity.includes(userCity) ||
+          userAddr.includes(cleanCity) ||
+          societyName.includes(cleanCity) ||
+          userPin.includes(cleanCity)
+        ) {
+          return true;
+        }
+
+        // Keyword overlap (e.g. 'delhi', 'saket', 'noida', 'ghaziabad', 'gurgaon', 'mumbai')
+        return keywords.some(
+          (kw) =>
+            userCity.includes(kw) ||
+            userAddr.includes(kw) ||
+            societyName.includes(kw) ||
+            (kw === 'delhi' && userCity.includes('delhi'))
+        );
+      });
+
+      // If specific sub-locality matched workers, use them; otherwise keep all approved workers for that category
+      if (matchedWorkers.length > 0) {
+        workers = matchedWorkers;
+      }
     }
 
     if (pincode) {

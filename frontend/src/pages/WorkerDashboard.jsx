@@ -58,13 +58,33 @@ const WorkerDashboard = () => {
   useEffect(() => {
     if (!socket || !user) return;
 
+    // Join Worker's City + Skills Dynamic Rooms for Targeted Dispatch
+    socket.emit('join_worker_channel', {
+      userId: user._id,
+      city: user.city || worker?.society?.city || 'Delhi',
+      categories: worker?.categories || [],
+    });
+
     const handleNewBooking = (newBooking) => {
       if (!newBooking) return;
-      setBookings((prev) => [newBooking, ...prev]);
+
+      // 1. Skill Match Guard: Ignore if worker does not possess this skill
+      const workerCats = worker?.categories || [];
+      if (workerCats.length > 0 && newBooking.category && !workerCats.includes(newBooking.category)) {
+        return;
+      }
+
+      // 2. Prevent duplicate entries
+      setBookings((prev) => {
+        if (prev.some((b) => b._id === newBooking._id)) return prev;
+        return [newBooking, ...prev];
+      });
+
       const cat = typeof newBooking.category === 'string' ? newBooking.category : 'Service';
       const bId = newBooking.bookingId || '';
-      setNotificationMsg(`🚨 New incoming booking request #${bId} for ${cat}!`);
-      setTimeout(() => setNotificationMsg(''), 6000);
+      const distInfo = newBooking.distanceKm ? ` (${newBooking.distanceKm} km away)` : '';
+      setNotificationMsg(`🚨 New incoming local job #${bId} for ${cat}${distInfo}!`);
+      setTimeout(() => setNotificationMsg(''), 7000);
     };
 
     const handleBookingStatusChanged = (updated) => {
@@ -81,7 +101,7 @@ const WorkerDashboard = () => {
       socket.off('new_booking_request', handleNewBooking);
       socket.off('booking_status_changed', handleBookingStatusChanged);
     };
-  }, [socket, user]);
+  }, [socket, user, worker]);
 
   const fetchWorkerData = async () => {
     setLoading(true);
@@ -115,6 +135,47 @@ const WorkerDashboard = () => {
       }
     } catch (err) {
       alert('Failed to update availability status');
+    }
+  };
+
+  const handleAcceptJob = async (booking) => {
+    try {
+      let res;
+      if (booking.isBroadcast) {
+        res = await api.put(`/bookings/${booking._id}/accept-broadcast`);
+      } else {
+        res = await api.put(`/bookings/${booking._id}/status`, { status: 'accepted' });
+      }
+
+      if (res.data.success) {
+        setBookings((prev) =>
+          prev.map((b) => (b._id === booking._id ? res.data.data : b))
+        );
+        fetchWorkerData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to accept job.');
+    }
+  };
+
+  const handleDeclineJob = async (booking) => {
+    try {
+      if (booking.isBroadcast) {
+        const res = await api.put(`/bookings/${booking._id}/decline-broadcast`);
+        if (res.data.success) {
+          setBookings((prev) => prev.filter((b) => b._id !== booking._id));
+        }
+      } else {
+        const res = await api.put(`/bookings/${booking._id}/status`, { status: 'rejected' });
+        if (res.data.success) {
+          setBookings((prev) =>
+            prev.map((b) => (b._id === booking._id ? res.data.data : b))
+          );
+          fetchWorkerData();
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to decline job.');
     }
   };
 
@@ -283,40 +344,61 @@ const WorkerDashboard = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {incomingRequests.map((b) => (
-              <div key={b._id} className="p-5 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-3">
+              <div key={b._id} className={`p-5 rounded-2xl space-y-3 border-2 ${
+                b.isBroadcast
+                  ? 'bg-gradient-to-br from-amber-50/90 to-teal-50/50 border-amber-300 shadow-md'
+                  : 'bg-amber-50/60 border-amber-200'
+              }`}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-xs font-extrabold text-slate-900">#{b.bookingId || ''}</span>
-                    <h4 className="font-bold text-sm text-teal-900">{typeof b.category === 'string' ? b.category : 'Service'}</h4>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-xs font-extrabold text-slate-900">#{b.bookingId || ''}</span>
+                      {b.isBroadcast && (
+                        <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[9px] rounded-full uppercase tracking-wider">
+                          📢 Nearby Pool Broadcast
+                        </span>
+                      )}
+                      {b.distanceKm !== undefined && (
+                        <span className="px-2 py-0.5 bg-teal-800 text-teal-100 font-extrabold text-[9px] rounded-full flex items-center gap-1 shadow-2xs">
+                          📍 {b.distanceKm} km away • ETA {b.estimatedEta || '15m'}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-bold text-sm text-teal-900">
+                      {b.packageTitle || (typeof b.category === 'string' ? b.category : 'Service')}
+                    </h4>
                     <p className="text-xs text-slate-600">Customer: {getCustomerName(b.customer)}</p>
                   </div>
-                  <span className="text-base font-extrabold text-amber-900">₹{b.price || 0}</span>
+                  <div className="text-right">
+                    <span className="text-lg font-black text-amber-950">₹{b.price || 0}</span>
+                    <p className="text-[10px] text-teal-700 font-bold">Guaranteed Payout</p>
+                  </div>
                 </div>
 
-                <div className="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-xl border border-amber-100">
-                  <p className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-amber-600" /> {typeof b.date === 'string' ? b.date : ''} ({typeof b.timeSlot === 'string' ? b.timeSlot : ''})
+                <div className="text-xs text-slate-600 space-y-1 bg-white/90 p-3 rounded-xl border border-amber-100 shadow-2xs">
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" /> {typeof b.date === 'string' ? b.date : ''} ({typeof b.timeSlot === 'string' ? b.timeSlot : ''})
                   </p>
-                  <p className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-amber-600" /> {typeof b.address === 'string' ? b.address : ''}, {typeof b.city === 'string' ? b.city : ''}
+                  <p className="flex items-center gap-1.5 font-semibold text-slate-800">
+                    <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" /> {typeof b.address === 'string' ? b.address : ''}, {typeof b.city === 'string' ? b.city : ''}
                   </p>
                   {Boolean(b.notes) && typeof b.notes === 'string' && (
-                    <p className="text-slate-500 italic">"{b.notes}"</p>
+                    <p className="text-slate-500 italic pt-1 border-t border-slate-100 mt-1">"{b.notes}"</p>
                   )}
                 </div>
 
                 <div className="flex gap-3 pt-1">
                   <button
-                    onClick={() => handleUpdateBookingStatus(b._id, 'rejected')}
-                    className="flex-1 py-2 bg-white hover:bg-red-50 text-red-700 font-bold text-xs rounded-xl border border-red-200 transition-colors flex items-center justify-center gap-1"
+                    onClick={() => handleDeclineJob(b)}
+                    className="flex-1 py-2.5 bg-white hover:bg-red-50 text-red-700 font-bold text-xs rounded-xl border border-red-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <XCircle className="w-4 h-4 text-red-600" /> Reject
+                    <XCircle className="w-4 h-4 text-red-600" /> {b.isBroadcast ? 'Decline (Pass to others)' : 'Reject'}
                   </button>
                   <button
-                    onClick={() => handleUpdateBookingStatus(b._id, 'accepted')}
-                    className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-1"
+                    onClick={() => handleAcceptJob(b)}
+                    className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <CheckCircle2 className="w-4 h-4 text-white" /> Accept Job
+                    <CheckCircle2 className="w-4 h-4 text-white" /> Accept & Claim Job
                   </button>
                 </div>
               </div>
