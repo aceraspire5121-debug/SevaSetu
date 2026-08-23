@@ -169,14 +169,11 @@ const InstantVideoCallModal = ({ isOpen, onClose, preselectedCategory = 'Plumber
     setIsCameraActive(false);
   };
 
-  const handleStartCallFlow = () => {
-    setCallState('connecting');
-    startCamera();
+  const [underDevAlert, setUnderDevAlert] = useState(false);
 
-    // Simulate instant 3.5-second matchmaking & worker answer
-    setTimeout(() => {
-      setCallState('active');
-    }, 3500);
+  const handleStartCallFlow = () => {
+    setUnderDevAlert(true);
+    alert('This Instant 1-on-1 Video Call feature is currently under development. Stay tuned for full launch!');
   };
 
   const handleEndCall = () => {
@@ -213,7 +210,7 @@ const InstantVideoCallModal = ({ isOpen, onClose, preselectedCategory = 'Plumber
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-sans">
-      <div className="bg-slate-900 text-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-800 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-slate-900 text-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-800 overflow-hidden max-h-[90vh] overflow-y-auto my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* =========================================================================
             STATE 1: PREVIEW & EXPERT MATCHING (Before Call Starts)
            ========================================================================= */}
@@ -250,6 +247,17 @@ const InstantVideoCallModal = ({ isOpen, onClose, preselectedCategory = 'Plumber
             </div>
 
             <div className="p-6 space-y-6">
+              {underDevAlert && (
+                <div className="p-4 bg-amber-500/20 border-2 border-amber-400 rounded-2xl text-amber-200 text-xs font-extrabold flex items-center justify-between shadow-md">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                    <span>This Instant 1-on-1 Video Call feature is currently under development. Stay tuned for full launch!</span>
+                  </div>
+                  <button onClick={() => setUnderDevAlert(false)} className="text-white hover:underline text-[10px] uppercase tracking-wider font-black shrink-0">
+                    Dismiss
+                  </button>
+                </div>
+              )}
               {/* Category Picker Chips */}
               <div className="space-y-2">
                 <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">

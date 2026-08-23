@@ -696,18 +696,18 @@ const WorkerDashboard = () => {
                   )}
                 </div>
 
-                <div className="flex gap-3 pt-1">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1">
                   <button
                     onClick={() => handleDeclineJob(b)}
-                    className="flex-1 py-2.5 bg-white hover:bg-red-50 text-red-700 font-bold text-xs rounded-xl border border-red-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    className="w-full sm:flex-1 py-2.5 bg-white hover:bg-red-50 text-red-700 font-bold text-xs rounded-xl border border-red-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <XCircle className="w-4 h-4 text-red-600" /> {b.isBroadcast ? 'Decline (Pass to others)' : 'Reject'}
+                    <XCircle className="w-4 h-4 text-red-600 shrink-0" /> {b.isBroadcast ? 'Decline (Pass)' : 'Reject'}
                   </button>
                   <button
                     onClick={() => handleAcceptJob(b)}
-                    className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    className="w-full sm:flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <CheckCircle2 className="w-4 h-4 text-white" /> Accept & Claim Job
+                    <CheckCircle2 className="w-4 h-4 text-white shrink-0" /> Accept & Claim Job
                   </button>
                 </div>
               </div>

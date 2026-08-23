@@ -95,9 +95,13 @@ UserSchema.pre('save', async function (next) {
 
 // Sign JWT and return
 UserSchema.methods.getSignedJwtToken = function () {
-  return jwt.sign({ id: this._id, role: this.role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '30d',
-  });
+  return jwt.sign(
+    { id: this._id, role: this.role },
+    process.env.JWT_SECRET || 'sevasetu_jwt_super_secret_key_2026',
+    {
+      expiresIn: process.env.JWT_EXPIRE || '30d',
+    }
+  );
 };
 
 // Match user entered password to hashed password in database

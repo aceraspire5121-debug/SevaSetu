@@ -1,5 +1,11 @@
-const { createWorker } = require('tesseract.js');
+let createWorker;
+try {
+  createWorker = require('tesseract.js').createWorker;
+} catch (e) {
+  console.warn('tesseract.js not installed, using Gemini/Regex engine.');
+}
 const { uploadToCloudinary } = require('../config/cloudinary');
+const Worker = require('../models/Worker');
 
 /**
  * Robust OCR and Multimodal Aadhaar Card Authenticator
@@ -201,27 +207,60 @@ exports.diagnoseProblemImage = async (req, res) => {
 
     const contextString = `${description || ''} ${sampleType || ''} ${fileName || ''} ${categoryHint || ''}`.toLowerCase();
 
-    // 1. If Gemini API Key is configured, run Gemini 1.5 Flash Vision with safe timeout
+    // 1. Gemini 3.6 Flash Vision via native Node.js https module (avoids fetch timeout issues)
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && image && image.startsWith('data:image/')) {
-      try {
-        const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
-        const mimeType = image.includes('data:') ? image.split(';')[0].replace('data:', '') : 'image/jpeg';
+      const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
+      let mimeType = image.includes('data:') ? image.split(';')[0].replace('data:', '') : 'image/jpeg';
+      if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
 
-        const prompt = `You are the AI Problem Diagnostic & Cost Estimation Engine for SevaSetu (Indian Labour Cooperative Home Services Platform).
-Category: "${categoryHint || 'Auto'}". Context note: "${description || fileName || 'None'}".
-Inspect this photo carefully and provide a realistic diagnosis with standard Indian cooperative fair-wage pricing.
+      const prompt = `You are the AI Problem Diagnostic & Cost Estimation Engine for SevaSetu — an Indian Home Services platform.
 
-Rules for pricing:
-- Minor quick fix (e.g. leaking tap washer, 1 loose switch, filter cleaning, door hinge): Labor ₹70-₹110, Spares ₹20-₹30. Total ₹99-₹140.
-- Standard repair (e.g. P-trap pipe leak, 16A modular socket, AC foam wash, damp wall): Labor ₹150-₹220, Spares ₹60-₹120. Total ₹210-₹340.
-- Major repair (e.g. AC gas leak, main MCB board, concealed pipe burst): Labor ₹280-₹380, Spares ₹150-₹290. Total ₹430-₹670.
+STEP 1 — IMAGE RELEVANCE CHECK (STRICT):
+Decide if this image is related to a home, building, or property problem/maintenance task.
 
-Respond strictly in valid JSON:
+✅ ACCEPT the image if it shows ANY of the following (even partially visible):
+- Electrical: switchboards, sockets, wires, MCB, fuse box, fans, tube lights
+- Plumbing: taps, pipes, drains, sinks, toilets, water tanks, geysers, water damage
+- Appliances: AC units, refrigerators, washing machines, ovens, water purifiers
+- Walls/Surfaces: damp patches, cracks, seepage, peeling paint, whitewash, putty
+- Woodwork: doors, windows, hinges, almirahs, drawers, shelves, cabinets
+- Flooring/Cleaning: stained tiles, grout, bathroom scale, kitchen grease, dirty surfaces
+- General property issues: rust on gates/grills, pest damage, roof cracks, balcony damage, broken fittings of any kind inside or outside a home/building
+
+✅ ALSO ACCEPT edge cases that are home/property related even if the exact category isn't listed — map to the nearest available category.
+
+❌ REJECT ONLY if the image is clearly unrelated to home/property:
+Examples of what to REJECT: food/drinks, animals/pets, people/portraits/selfies, nature/scenery/sky, vehicles/cars, clothing, gadgets like phones/laptops, screenshots/text/documents, artwork, random products.
+
+If REJECTED, respond ONLY with:
 {
+  "rejected": true,
+  "rejectionReason": "This image does not appear to show a home repair or maintenance issue. Please upload a clear photo of the problem area in your home (e.g. broken switchboard, leaking pipe, damp wall, dusty AC, cracked tile, etc.)"
+}
+
+STEP 2 — IF IMAGE IS VALID, provide full diagnosis:
+Category hint: "${categoryHint || 'Auto'}". Extra context: "${description || fileName || 'None'}".
+
+Category mapping rule: Map to the NEAREST available category even for non-standard issues:
+- Gate rust / grill repair → Carpenter
+- Pest damage / termite on wood → Carpenter
+- Roof crack / balcony seepage → Painter
+- Water purifier / geyser / washing machine → Technician
+- Clogged drain / toilet block → Plumber
+- Any other home issue → pick closest fit
+
+Pricing rules (Indian Cooperative Fair-Wage):
+- Minor quick fix: Labor ₹70–₹110, Spares ₹20–₹30. Total ₹99–₹140.
+- Standard repair: Labor ₹150–₹220, Spares ₹60–₹120. Total ₹210–₹340.
+- Major repair: Labor ₹280–₹380, Spares ₹150–₹290. Total ₹430–₹670.
+
+Respond strictly in valid JSON only (no extra text):
+{
+  "rejected": false,
   "title": string,
   "category": "Plumber" | "Electrician" | "Technician" | "Painter" | "House Cleaning" | "Carpenter",
-  "confidence": number,
+  "confidence": number (0-100),
   "severity": "Low (Minor Quick Fix)" | "Medium (Standard Repair)" | "High (Major Work)",
   "description": string,
   "duration": string,
@@ -234,47 +273,128 @@ Respond strictly in valid JSON:
   "sparesChecklist": [string]
 }`;
 
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      const postData = JSON.stringify({
+        contents: [
           {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: AbortSignal.timeout(3000),
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    { text: prompt },
-                    {
-                      inline_data: {
-                        mime_type: mimeType,
-                        data: base64Data,
-                      },
-                    },
-                  ],
-                },
-              ],
-              generationConfig: {
-                response_mime_type: 'application/json',
-                temperature: 0.1,
-              },
-            }),
-          }
-        );
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64Data } },
+            ],
+          },
+        ],
+        generationConfig: {
+          response_mime_type: 'application/json',
+          temperature: 0.1,
+        },
+      });
 
-        const geminiData = await geminiRes.json();
-        if (geminiData.candidates && geminiData.candidates[0]?.content?.parts[0]?.text) {
-          const parsed = JSON.parse(geminiData.candidates[0].content.parts[0].text);
+      try {
+        const geminiData = await new Promise((resolve, reject) => {
+          const https = require('https');
+          const options = {
+            hostname: 'generativelanguage.googleapis.com',
+            path: `/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(postData),
+              'x-goog-api-key': apiKey,
+            },
+            timeout: 25000,
+          };
+
+          const reqG = https.request(options, (resG) => {
+            let body = '';
+            resG.on('data', (chunk) => (body += chunk));
+            resG.on('end', () => {
+              try {
+                const parsed = JSON.parse(body);
+                resolve({ status: resG.statusCode, data: parsed });
+              } catch (e) {
+                reject(new Error('Failed to parse Gemini response JSON'));
+              }
+            });
+          });
+
+          reqG.on('timeout', () => {
+            reqG.destroy();
+            reject(new Error('Gemini API request timed out after 25s'));
+          });
+
+          reqG.on('error', (e) => reject(e));
+          reqG.write(postData);
+          reqG.end();
+        });
+
+        if (geminiData.status !== 200) {
+          console.warn('Gemini API returned error:', geminiData.status, geminiData.data);
+          return res.status(500).json({
+            success: false,
+            message: `Google Gemini API Error (${geminiData.status}): ${geminiData.data?.error?.message || 'Failed to analyze image.'}`,
+          });
+        }
+
+        const aiResult = geminiData.data;
+        if (aiResult.candidates && aiResult.candidates[0]?.content?.parts[0]?.text) {
+          const parsed = JSON.parse(aiResult.candidates[0].content.parts[0].text);
+
+          // If Gemini flagged image as irrelevant to home services
+          if (parsed.rejected === true) {
+            return res.status(422).json({
+              success: false,
+              rejected: true,
+              message: parsed.rejectionReason || 'Please upload a photo of a home repair issue (switchboard, tap, AC unit, wall damage, etc.)',
+            });
+          }
+
+          let recommendedWorkers = [];
+          try {
+            const targetCat = parsed.category || 'Electrician';
+            const workersList = await Worker.find({
+              approvalStatus: 'approved',
+              categories: { $in: [targetCat] },
+            })
+              .populate('user', 'name phone profilePhoto city rating')
+              .populate('society', 'name city')
+              .limit(3);
+
+            recommendedWorkers = workersList.map((w) => ({
+              _id: w._id,
+              name: w.user?.name || 'Verified Cooperative Worker',
+              photo: w.user?.profilePhoto || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=300&q=80',
+              rating: w.rating || 4.9,
+              hourlyRate: w.hourlyRate || 250,
+              experienceYears: w.experienceYears || 5,
+              societyName: w.society?.name || 'Labour Cooperative Society',
+              category: targetCat,
+            }));
+          } catch (wErr) {
+            console.warn('Error fetching recommended workers:', wErr.message);
+          }
+
           return res.status(200).json({
             success: true,
             diagnosis: parsed,
+            recommendedWorkers,
             source: 'Gemini Multimodal Vision Engine',
           });
         }
+
+        return res.status(500).json({ success: false, message: 'Gemini returned no valid candidates.' });
+
       } catch (geminiErr) {
-        console.warn('Gemini vision API skipped, applying autonomous contextual engine:', geminiErr.message);
+        console.error('Gemini vision API error:', geminiErr.message);
+        return res.status(500).json({
+          success: false,
+          message: `Gemini Vision AI call failed: ${geminiErr.message}`,
+        });
       }
     }
+
+    return res.status(400).json({
+      success: false,
+      message: 'GEMINI_API_KEY is not configured or invalid image format.',
+    });
 
     // 2. High-Precision Autonomous AI Diagnostic Engine
     let diagnosisResult;
@@ -506,9 +626,36 @@ Respond strictly in valid JSON:
       };
     }
 
+    // Fetch recommended verified workers for detected fallback category
+    let recommendedWorkers = [];
+    try {
+      const targetCat = diagnosisResult?.category || 'Electrician';
+      const workersList = await Worker.find({
+        approvalStatus: 'approved',
+        categories: { $in: [targetCat] },
+      })
+        .populate('user', 'name phone profilePhoto city rating')
+        .populate('society', 'name city')
+        .limit(3);
+
+      recommendedWorkers = workersList.map((w) => ({
+        _id: w._id,
+        name: w.user?.name || 'Verified Cooperative Worker',
+        photo: w.user?.profilePhoto || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=300&q=80',
+        rating: w.rating || 4.9,
+        hourlyRate: w.hourlyRate || 250,
+        experienceYears: w.experienceYears || 5,
+        societyName: w.society?.name || 'Labour Cooperative Society',
+        category: targetCat,
+      }));
+    } catch (wErr) {
+      console.warn('Error fetching fallback workers:', wErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       diagnosis: diagnosisResult,
+      recommendedWorkers,
       source: 'SevaSetu AI Autonomous Diagnostic Engine',
     });
   } catch (error) {
