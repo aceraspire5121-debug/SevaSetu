@@ -43,24 +43,54 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
+// Restrict worker role from accessing customer browsing pages
+const NonWorkerOnlyRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (user && user.role === 'worker') {
+    return <Navigate to="/worker-dashboard" replace />;
+  }
+  return children;
+};
+
 function AppRoutes() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden w-full max-w-full">
       <Navbar />
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route
+            path="/"
+            element={
+              <NonWorkerOnlyRoute>
+                <Home />
+              </NonWorkerOnlyRoute>
+            }
+          />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/worker-pending" element={<WorkerPendingApproval />} />
 
-          {/* Dedicated Service Package Detail & Pricing Page (e.g. Full Home Deep Cleaning, AC Jet Service) */}
-          <Route path="/service-package/:slug" element={<ServicePackageDetail />} />
+          {/* Dedicated Service Package Detail & Pricing Page */}
+          <Route
+            path="/service-package/:slug"
+            element={
+              <NonWorkerOnlyRoute>
+                <ServicePackageDetail />
+              </NonWorkerOnlyRoute>
+            }
+          />
 
-          {/* Publicly Accessible Service Discovery (Browse freely without login) */}
-          <Route path="/explore-services" element={<CustomerDashboard />} />
+          {/* Publicly Accessible Service Discovery */}
+          <Route
+            path="/explore-services"
+            element={
+              <NonWorkerOnlyRoute>
+                <CustomerDashboard />
+              </NonWorkerOnlyRoute>
+            }
+          />
           <Route path="/customer-dashboard" element={<Navigate to="/explore-services" replace />} />
 
           {/* Clean URL for Customer Activity & Bookings */}

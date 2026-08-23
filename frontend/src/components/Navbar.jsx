@@ -71,7 +71,7 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             {/* Logo & Brand */}
-            <Link to="/" className="flex items-center gap-2.5 group">
+            <Link to={user?.role === 'worker' ? '/worker-dashboard' : '/'} className="flex items-center gap-2.5 group">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-all">
                 <HeartHandshake className="w-5 h-5 text-white" />
               </div>
@@ -301,33 +301,37 @@ const Navbar = () => {
                   Navigation Menu
                 </span>
 
-                <Link
-                  to="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between p-3 rounded-2xl transition-all ${
-                    isActivePath('/') ? 'bg-teal-50 text-teal-900 font-black border border-teal-200' : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <HomeIcon className="w-4 h-4 text-teal-600" />
-                    <span>{t('home')}</span>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                </Link>
+                {user?.role !== 'worker' && (
+                  <>
+                    <Link
+                      to="/"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center justify-between p-3 rounded-2xl transition-all ${
+                        isActivePath('/') ? 'bg-teal-50 text-teal-900 font-black border border-teal-200' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <HomeIcon className="w-4 h-4 text-teal-600" />
+                        <span>{t('home')}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </Link>
 
-                <Link
-                  to="/explore-services"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between p-3 rounded-2xl transition-all ${
-                    isActivePath('/explore-services') ? 'bg-teal-50 text-teal-900 font-black border border-teal-200' : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Briefcase className="w-4 h-4 text-teal-600" />
-                    <span>{t('exploreServices')}</span>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                </Link>
+                    <Link
+                      to="/explore-services"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center justify-between p-3 rounded-2xl transition-all ${
+                        isActivePath('/explore-services') ? 'bg-teal-50 text-teal-900 font-black border border-teal-200' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Briefcase className="w-4 h-4 text-teal-600" />
+                        <span>{t('exploreServices')}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </Link>
+                  </>
+                )}
 
                 {user && user.role === 'customer' && (
                   <Link
@@ -432,25 +436,29 @@ const Navbar = () => {
 
       {/* STICKY BOTTOM MOBILE FLOATING NAVIGATION DOCK (Native iOS App Style) */}
       <div className="fixed bottom-3 inset-x-3 z-40 md:hidden bg-slate-950/90 text-white backdrop-blur-xl border border-slate-800/80 rounded-full px-2 py-2 shadow-2xl flex justify-around items-center text-[10px] font-bold">
-        <Link
-          to="/"
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-full transition-colors ${
-            isActivePath('/') ? 'text-teal-400 font-black' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <HomeIcon className="w-4 h-4" />
-          <span>Home</span>
-        </Link>
+        {user?.role !== 'worker' && (
+          <>
+            <Link
+              to="/"
+              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-full transition-colors ${
+                isActivePath('/') ? 'text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <HomeIcon className="w-4 h-4" />
+              <span>Home</span>
+            </Link>
 
-        <Link
-          to="/explore-services"
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-full transition-colors ${
-            isActivePath('/explore-services') ? 'text-teal-400 font-black' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Briefcase className="w-4 h-4" />
-          <span>Services</span>
-        </Link>
+            <Link
+              to="/explore-services"
+              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-full transition-colors ${
+                isActivePath('/explore-services') ? 'text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Services</span>
+            </Link>
+          </>
+        )}
 
         <Link
           to={getRoleDashboardLink()}
