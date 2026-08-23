@@ -203,18 +203,19 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* Mobile Header Bar Right: Video Pill + Hamburger Trigger */}
+            {/* Mobile Header Bar Right: Language Switcher Button + Hamburger Menu Trigger */}
             <div className="flex items-center gap-2 md:hidden">
+              {/* Language Switcher on Mobile Header */}
               <button
-                type="button"
-                onClick={() => setShowVideoModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-900 text-white text-[11px] font-black border border-teal-500/40 shadow-xs"
+                onClick={toggleLanguage}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100 text-xs font-extrabold transition-colors cursor-pointer shadow-2xs"
+                title="Toggle Language"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                <Video className="w-3 h-3 text-teal-300" />
-                <span>₹49</span>
+                <Globe className="w-3.5 h-3.5 text-teal-600" />
+                <span>{language === 'en' ? 'हिन्दी' : 'EN'}</span>
               </button>
 
+              {/* Hamburger Menu Trigger */}
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
