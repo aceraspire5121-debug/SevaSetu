@@ -112,19 +112,17 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center gap-4">
 
-            {/* Logo */}
+            {/* Logo: Crisp Black 'SS' Logo & SevaSetu with Teal Dot */}
             <Link to={user?.role === 'worker' ? '/worker-dashboard' : '/'} className="flex items-center gap-2.5 group shrink-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-all">
-                <HeartHandshake className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-xl font-black tracking-tight bg-gradient-to-r from-slate-900 via-teal-950 to-teal-800 bg-clip-text text-transparent">
-                  {t('brand')}
-                </span>
-                <span className="block text-[9px] font-black uppercase tracking-widest text-amber-600 -mt-1">
-                  {t('tagline')}
+              <div className="w-9 h-9 rounded-xl bg-black flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                <span className="text-white font-black text-sm tracking-wider font-sans select-none">
+                  SS
                 </span>
               </div>
+              <span className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-1">
+                SevaSetu
+                <span className="w-2 h-2 rounded-full bg-teal-600 inline-block ml-0.5" />
+              </span>
             </Link>
 
             {/* Desktop Nav Links */}
@@ -299,10 +297,15 @@ const Navbar = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <Link to="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-teal-700 flex items-center justify-center text-white shadow-sm">
-                    <HeartHandshake className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center shadow-sm">
+                    <span className="text-white font-black text-xs tracking-wider font-sans select-none">
+                      SS
+                    </span>
                   </div>
-                  <span className="font-black text-slate-900 text-lg tracking-tight">{t('brand')}</span>
+                  <span className="font-black text-slate-900 text-lg tracking-tight flex items-center gap-1">
+                    SevaSetu
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-600 inline-block" />
+                  </span>
                 </Link>
                 <button
                   type="button"
