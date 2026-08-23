@@ -213,7 +213,7 @@ const InstantVideoCallModal = ({ isOpen, onClose, preselectedCategory = 'Plumber
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-sans">
-      <div className="bg-slate-900 text-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-800 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-slate-900 text-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-800 overflow-hidden max-h-[90vh] overflow-y-auto my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* =========================================================================
             STATE 1: PREVIEW & EXPERT MATCHING (Before Call Starts)
            ========================================================================= */}

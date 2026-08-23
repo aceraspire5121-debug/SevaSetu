@@ -15,6 +15,8 @@ import {
   Briefcase,
   CheckSquare,
   Video,
+  Menu,
+  X,
 } from 'lucide-react';
 import InstantVideoCallModal from './InstantVideoCallModal';
 
@@ -24,6 +26,7 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -165,9 +168,122 @@ const Navbar = () => {
                   </Link>
                 </div>
               )}
+
+              {/* Mobile Menu Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Toggle Navigation Menu"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Collapsible Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-slate-200 px-4 pt-3 pb-6 space-y-4 shadow-xl animate-fadeIn">
+            {/* Mobile Nav Links */}
+            <div className="flex flex-col space-y-2 font-medium text-slate-700 text-sm">
+              <Link
+                to="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-teal-50 hover:text-teal-800 transition-colors"
+              >
+                <HomeIcon className="w-4 h-4 text-teal-600" />
+                {t('home')}
+              </Link>
+              <Link
+                to="/explore-services"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-teal-50 hover:text-teal-800 transition-colors"
+              >
+                <Briefcase className="w-4 h-4 text-teal-600" />
+                {t('exploreServices')}
+              </Link>
+
+              {user && user.role === 'customer' && (
+                <Link
+                  to="/my-bookings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-teal-50 hover:text-teal-800 transition-colors"
+                >
+                  <CheckSquare className="w-4 h-4 text-teal-600" />
+                  {t('myBookings')}
+                </Link>
+              )}
+
+              {user && (
+                <Link
+                  to={getRoleDashboardLink()}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 py-2 px-3 rounded-xl bg-teal-50 font-bold text-teal-900 border border-teal-200 transition-colors"
+                >
+                  <LayoutDashboard className="w-4 h-4 text-teal-700" />
+                  <span>Dashboard ({user.role})</span>
+                </Link>
+              )}
+            </div>
+
+            {/* Mobile Actions & User Status */}
+            <div className="pt-2 border-t border-slate-100 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowVideoModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-900 text-white font-extrabold text-xs shadow-md"
+              >
+                <Video className="w-4 h-4 text-teal-300" />
+                <span>Instant Video Call Help (₹49)</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  toggleLanguage();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-semibold text-xs"
+              >
+                <Globe className="w-4 h-4 text-teal-600" />
+                <span>Switch Language: {language === 'en' ? 'हिन्दी' : 'English'}</span>
+              </button>
+
+              {user ? (
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 font-bold text-xs transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout ({user.name})</span>
+                </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 text-center text-xs font-bold text-slate-700 bg-slate-100 rounded-xl"
+                  >
+                    {t('login')}
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 text-center text-xs font-bold text-white bg-teal-600 rounded-xl shadow-sm"
+                  >
+                    {t('register')}
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Global Instant Video Call Modal */}
