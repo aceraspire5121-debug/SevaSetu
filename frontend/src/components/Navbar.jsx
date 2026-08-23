@@ -31,6 +31,17 @@ const Navbar = () => {
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleOpenVideoCall = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role === 'worker') {
+      return;
+    }
+    setShowVideoModal(true);
+  };
+
   const handleLogout = () => {
     logout();
     setMobileMenuOpen(false);
@@ -131,19 +142,21 @@ const Navbar = () => {
 
             {/* Desktop Right Actions */}
             <div className="hidden md:flex items-center gap-3">
-              {/* Video Help Button */}
-              <button
-                type="button"
-                onClick={() => setShowVideoModal(true)}
-                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 hover:from-teal-900 hover:to-slate-800 text-white text-xs font-black shadow-sm transition-all border border-teal-500/40 cursor-pointer"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <Video className="w-3.5 h-3.5 text-teal-300" />
-                <span>Video Help</span>
-                <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full">
-                  ₹49
-                </span>
-              </button>
+              {/* Video Help Button (Hidden for Worker Role) */}
+              {user?.role !== 'worker' && (
+                <button
+                  type="button"
+                  onClick={handleOpenVideoCall}
+                  className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 hover:from-teal-900 hover:to-slate-800 text-white text-xs font-black shadow-sm transition-all border border-teal-500/40 cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <Video className="w-3.5 h-3.5 text-teal-300" />
+                  <span>Video Help</span>
+                  <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full">
+                    ₹49
+                  </span>
+                </button>
+              )}
 
               {/* Language Switcher */}
               <button
@@ -347,28 +360,30 @@ const Navbar = () => {
                 )}
               </div>
 
-              {/* Instant Video Guidance Banner in Drawer */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setShowVideoModal(true);
-                }}
-                className="w-full p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-left space-y-1 shadow-2xs"
-              >
-                <div className="flex items-center justify-between text-xs font-black text-amber-950">
-                  <span className="flex items-center gap-1.5">
-                    <Video className="w-4 h-4 text-amber-600" />
-                    Instant Video Call Help
-                  </span>
-                  <span className="px-1.5 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full">
-                    ₹49
-                  </span>
-                </div>
-                <p className="text-[10px] text-amber-800">
-                  Connect with verified technician in 60 seconds for live triage.
-                </p>
-              </button>
+              {/* Instant Video Guidance Banner in Drawer (Hidden for Worker Role) */}
+              {user?.role !== 'worker' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleOpenVideoCall();
+                  }}
+                  className="w-full p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-left space-y-1 shadow-2xs cursor-pointer"
+                >
+                  <div className="flex items-center justify-between text-xs font-black text-amber-950">
+                    <span className="flex items-center gap-1.5">
+                      <Video className="w-4 h-4 text-amber-600" />
+                      Instant Video Call Help
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full">
+                      ₹49
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-amber-800">
+                    Connect with verified technician in 60 seconds for live triage.
+                  </p>
+                </button>
+              )}
             </div>
 
             {/* Bottom Actions inside Drawer */}
