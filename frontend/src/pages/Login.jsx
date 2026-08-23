@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { HeartHandshake, LogIn, Key, Sparkles, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,12 +14,9 @@ const Login = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  const [infoMsg, setInfoMsg] = useState('');
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setInfoMsg('');
     setLoading(true);
 
     try {
@@ -39,32 +36,36 @@ const Login = () => {
         navigate('/customer-dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check credentials.');
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFillDemo = (demoEmail, demoPassword, roleLabel) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError('');
-    setInfoMsg(`Filled ${roleLabel} credentials into form below. Click 'Login' to enter.`);
-  };
-
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-        {/* Top Header */}
-        <div className="bg-gradient-to-r from-teal-800 to-teal-900 text-white p-8 text-center relative">
-          <div className="w-12 h-12 rounded-2xl bg-teal-500/20 text-teal-300 mx-auto mb-3 flex items-center justify-center border border-teal-400/30">
-            <HeartHandshake className="w-6 h-6" />
-          </div>
-          <h2 className="text-2xl font-extrabold">{t('login')} to {t('brand')}</h2>
-          <p className="text-xs text-teal-200 mt-1">Access your cooperative account portal</p>
+    <div className="min-h-[85vh] bg-white flex flex-col justify-between items-center px-4 py-8 font-sans">
+      <div className="w-full max-w-sm mx-auto space-y-5">
+        {/* 1. Centered Brand Logo (Matching Screenshot 3) */}
+        <div className="flex justify-center pt-2">
+          <Link to="/" className="inline-flex items-center gap-2.5 group">
+            <div className="w-10 h-10 rounded-2xl bg-black flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+              <span className="text-white font-black text-base tracking-wider font-sans select-none">
+                SS
+              </span>
+            </div>
+            <span className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-1">
+              SevaSetu
+              <span className="w-2 h-2 rounded-full bg-teal-600" />
+            </span>
+          </Link>
         </div>
 
-        <div className="p-8 space-y-6">
+        {/* 2. Amazon-style Clean Login Card (Matching Screenshot 2 & 4) */}
+        <div className="bg-white border border-slate-300/80 rounded-2xl p-7 shadow-xs space-y-5">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Sign in
+          </h1>
+
           {error && (
             <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -72,67 +73,28 @@ const Login = () => {
             </div>
           )}
 
-          {infoMsg && (
-            <div className="p-3 bg-teal-50 text-teal-800 text-xs rounded-xl border border-teal-200 flex items-start gap-2 font-semibold">
-              <Sparkles className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-              <span>{infoMsg}</span>
-            </div>
-          )}
-
-          {/* Quick Demo Credentials Autofill Box */}
-          <div className="bg-amber-50/70 border border-amber-200 p-4 rounded-2xl space-y-2.5">
-            <div className="flex items-center justify-between text-xs font-bold text-amber-900">
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                Autofill Demo Role Credentials:
-              </span>
-              <span className="text-[10px] text-amber-700 font-semibold">1-Tap Fill</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {[
-                { id: 'customer', label: '👤 Customer', email: 'customer@sevasetu.org', password: 'password123', name: 'Customer' },
-                { id: 'worker_approved', label: '🛠 Worker (Approved)', email: 'worker.ramesh@sevasetu.org', password: 'password123', name: 'Approved Worker' },
-                { id: 'worker_pending', label: '⏳ Worker (Pending)', email: 'worker.pending@sevasetu.org', password: 'password123', name: 'Pending Worker' },
-                { id: 'admin_mumbai', label: '🏢 Admin (Mumbai)', email: 'societyadmin@sevasetu.org', password: 'password123', name: 'Admin (Mumbai)' },
-                { id: 'admin_delhi', label: '🏛 Admin (Delhi)', email: 'delhi.admin@sevasetu.org', password: 'password123', name: 'Admin (Delhi)' },
-                { id: 'super_admin', label: '👑 Super Admin', email: 'fedadmin@sevasetu.org', password: 'password123', name: 'Super Admin' },
-              ].map((acc) => {
-                const isSelected = email.toLowerCase().trim() === acc.email.toLowerCase();
-                return (
-                  <button
-                    key={acc.id}
-                    type="button"
-                    onClick={() => handleFillDemo(acc.email, acc.password, acc.name)}
-                    className={`px-2.5 py-2 rounded-xl text-left transition-all truncate cursor-pointer font-bold border ${
-                      isSelected
-                        ? 'bg-slate-900 text-amber-300 border-slate-950 shadow-md ring-2 ring-teal-600 ring-offset-1 scale-[1.02]'
-                        : 'bg-white hover:bg-amber-100/70 text-slate-800 border-amber-200 hover:border-amber-300 shadow-2xs'
-                    }`}
-                  >
-                    {acc.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address</label>
+            {/* Email Address Input */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide">
+                Email Address
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="name@sevasetu.org"
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-600 outline-none"
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:border-teal-700 focus:ring-1 focus:ring-teal-700 outline-none transition-all placeholder:text-slate-400 font-normal"
               />
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-700 uppercase">Password</label>
+            {/* Password Input with Forgot Password Link */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  Password
+                </label>
                 <Link
                   to="/forgot-password"
                   className="text-xs font-bold text-teal-700 hover:text-teal-900 hover:underline"
@@ -146,34 +108,59 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-600 outline-none"
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:border-teal-700 focus:ring-1 focus:ring-teal-700 outline-none transition-all placeholder:text-slate-400 font-normal"
               />
             </div>
 
+            {/* Submit / Login Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
             >
               {loading ? (
-                <span>Authenticating...</span>
+                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  {t('login')}
+                  <span>Login</span>
                 </>
               )}
             </button>
           </form>
 
-          <p className="text-center text-xs text-slate-500">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-bold text-teal-700 hover:underline">
-              Register here
-            </Link>
+          {/* Legal / Policy Note */}
+          <p className="text-[11px] text-slate-600 leading-relaxed pt-1">
+            By continuing, you agree to SevaSetu's{' '}
+            <span className="text-teal-700 hover:underline cursor-pointer">Conditions of Use</span> and{' '}
+            <span className="text-teal-700 hover:underline cursor-pointer">Privacy Notice</span>.
           </p>
+
+          <hr className="border-slate-200" />
+
+          {/* Registration Link */}
+          <div className="text-center pt-1">
+            <p className="text-xs text-slate-600">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-teal-700 font-bold hover:underline">
+                Register here
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* 3. Amazon-style Footer Links */}
+      <footer className="w-full max-w-sm mx-auto text-center pt-8 pb-2 space-y-2 border-t border-slate-100 mt-6">
+        <div className="flex items-center justify-center gap-6 text-xs text-teal-700 font-semibold">
+          <Link to="/" className="hover:underline">Conditions of Use</Link>
+          <Link to="/" className="hover:underline">Privacy Notice</Link>
+          <Link to="/" className="hover:underline">Help</Link>
+        </div>
+        <p className="text-[11px] text-slate-400">
+          © 2026 SevaSetu Cooperative Home Services Platform. All rights reserved.
+        </p>
+      </footer>
     </div>
   );
 };

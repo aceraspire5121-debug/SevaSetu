@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import AiDiagnosticModal from '../components/AiDiagnosticModal';
 import InstantVideoCallModal from '../components/InstantVideoCallModal';
+import SkillPassportModal from '../components/SkillPassportModal';
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
@@ -40,6 +41,7 @@ const CustomerDashboard = () => {
   const [pendingWorker, setPendingWorker] = useState(null);
   const [showAiModal, setShowAiModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [passportWorker, setPassportWorker] = useState(null);
 
   // Filters & Sorting (Initialized directly from URL params)
   const initialCategory = searchParams.get('category') || searchParams.get('search') || '';
@@ -386,6 +388,7 @@ const CustomerDashboard = () => {
                   worker={w}
                   categoryMinWage={selectedCategoryObj?.minHourlyRate}
                   onBook={(wrk) => handleInitiateBook(wrk)}
+                  onViewPassport={(wrk) => setPassportWorker(wrk)}
                 />
               ))}
             </div>
@@ -598,6 +601,13 @@ const CustomerDashboard = () => {
         isOpen={showVideoModal}
         onClose={() => setShowVideoModal(false)}
         preselectedCategory={selectedCategory || 'Plumber'}
+      />
+
+      {/* DIGITAL SKILL PASSPORT MODAL */}
+      <SkillPassportModal
+        worker={passportWorker}
+        isOpen={!!passportWorker}
+        onClose={() => setPassportWorker(null)}
       />
     </div>
   );
