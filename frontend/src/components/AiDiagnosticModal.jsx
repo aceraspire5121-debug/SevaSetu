@@ -3,625 +3,424 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import api from '../utils/api';
 import {
-  Sparkles,
-  Camera,
-  Upload,
-  CheckCircle2,
-  AlertTriangle,
-  Zap,
-  Wrench,
-  Clock,
-  DollarSign,
-  ShieldCheck,
-  X,
-  ChevronRight,
-  RefreshCw,
-  Check,
-  Video,
+  Sparkles, Camera, Upload, AlertTriangle, Wrench,
+  X, RefreshCw, User, Star, ChevronRight, Zap, Droplets, Wind, Brush, Home, TreePine,
 } from 'lucide-react';
 import InstantVideoCallModal from './InstantVideoCallModal';
 
 const CATEGORY_OPTIONS = [
-  { id: 'Plumber', label: '🚰 Plumbing', defaultDesc: 'Water leakage, dripping tap, pipe joint repair' },
-  { id: 'Electrician', label: '⚡ Electrician', defaultDesc: 'Switchboard repair, spark, loose wiring' },
-  { id: 'Technician', label: '❄️ AC & Appliances', defaultDesc: 'AC water drip, cooling coil dust, appliance repair' },
-  { id: 'House Cleaning', label: '🧹 Deep Cleaning', defaultDesc: 'Limescale stains, tile cleaning, kitchen grease' },
-  { id: 'Painter', label: '🎨 Painter & Seepage', defaultDesc: 'Damp wall moisture, paint flaking, putty touchup' },
-  { id: 'Carpenter', label: '🪚 Carpenter', defaultDesc: 'Door hinge alignment, drawer channel, wooden repair' },
+  { id: 'Auto', label: 'Auto-Detect', icon: '✦', color: 'from-violet-600 to-indigo-600' },
+  { id: 'Electrician', label: 'Electrician', icon: '⚡', color: 'from-amber-500 to-orange-500' },
+  { id: 'Plumber', label: 'Plumbing', icon: '💧', color: 'from-blue-500 to-cyan-500' },
+  { id: 'Technician', label: 'AC & Appliances', icon: '❄', color: 'from-sky-500 to-blue-500' },
+  { id: 'House Cleaning', label: 'Deep Cleaning', icon: '✦', color: 'from-emerald-500 to-teal-500' },
+  { id: 'Painter', label: 'Painter', icon: '🖌', color: 'from-pink-500 to-rose-500' },
+  { id: 'Carpenter', label: 'Carpenter', icon: '🪚', color: 'from-amber-700 to-yellow-600' },
 ];
 
-const SAMPLE_PRESETS = [
-  {
-    id: 'tap_minor',
-    title: '💧 Dripping Tap',
-    category: 'Plumber',
-    image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-    description: 'Faucet spindle loose washer dripping drops',
-  },
-  {
-    id: 'plumber',
-    title: '🚰 Leaking Sink Pipe',
-    category: 'Plumber',
-    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=600&q=80',
-    description: 'Under-sink P-trap joint crack and continuous water seepage',
-  },
-  {
-    id: 'switch_minor',
-    title: '⚡ Loose 6A Switch',
-    category: 'Electrician',
-    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80',
-    description: 'Single light switch loose terminal and sparking',
-  },
-  {
-    id: 'electrician',
-    title: '🔌 16A Burnt Socket',
-    category: 'Electrician',
-    image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80',
-    description: '16A power socket burnt and modular plate rewiring',
-  },
-  {
-    id: 'technician',
-    title: '❄️ AC Foam Jet Wash',
-    category: 'Technician',
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
-    description: 'Evaporator cooling coil blocked with heavy dust',
-  },
-  {
-    id: 'painter',
-    title: '🎨 Damp Wall Seepage',
-    category: 'Painter',
-    image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80',
-    description: 'Capillary water seepage causing flaking paint blisters on wall base',
-  },
+const SCAN_STEPS = [
+  'Uploading photo to Gemini Multimodal Vision...',
+  'Analyzing visual damage, material wear & severity...',
+  'Calculating Indian cooperative fair-wage pricing...',
 ];
-
-const getLocalDiagnosis = (targetCat, targetDesc, targetSample) => {
-  const cat = (targetCat || 'Electrician').toLowerCase();
-  if (cat.includes('electric') || cat.includes('bijli')) {
-    return {
-      title: 'Damaged Wall Switchboard & Exposed Loose Wiring',
-      category: 'Electrician',
-      confidence: 98.9,
-      severity: 'Medium (Exposed Live Terminals & Shock Risk)',
-      description:
-        'Cracked/broken wall switch casing with damaged mounting frame and exposed copper terminals. Requires switchboard faceplate replacement, secure terminal screw crimping, and electrical earthing safety check.',
-      duration: '25 - 35 Mins',
-      pricing: {
-        laborCharge: 120,
-        sparePartsEstimate: 85,
-        sparePartsList: ['Anchor Roma Modular Switch Plate (4/6 Module)', 'Flame-Retardant Insulation Crimp Caps'],
-        totalEstimate: 205,
-      },
-      sparesChecklist: ['Modular Switch Faceplate', 'Insulated Precision Screwdriver', 'Digital Voltage Tester Pen'],
-    };
-  }
-  if (cat.includes('plumb') || cat.includes('nal') || cat.includes('water')) {
-    return {
-      title: 'Under-Sink P-Trap Drainage Joint Leakage',
-      category: 'Plumber',
-      confidence: 98.6,
-      severity: 'Medium (Continuous Seepage)',
-      description:
-        'Hairline fracture and thread loosening at the lower P-trap joint causing continuous water seepage under the sink. Requires P-trap coupling replacement.',
-      duration: '30 - 45 Mins',
-      pricing: {
-        laborCharge: 150,
-        sparePartsEstimate: 90,
-        sparePartsList: ['32mm Heavy Duty PVC P-Trap', 'Teflon Seal Tape & O-Ring Washer'],
-        totalEstimate: 240,
-      },
-      sparesChecklist: ['32mm P-Trap Pipe', 'Teflon Seal Tape', 'Adjustable Pipe Wrench'],
-    };
-  }
-  if (cat.includes('tech') || cat.includes('ac') || cat.includes('appliance')) {
-    return {
-      title: 'AC Cooling Coil Dirt Blockage & Condensate Overflow',
-      category: 'Technician',
-      confidence: 99.1,
-      severity: 'Medium (Cooling Loss & Water Dripping)',
-      description:
-        'Heavy fungal and dust accumulation on evaporator cooling fins restricting airflow and blocking the primary drain tray.',
-      duration: '45 - 60 Mins',
-      pricing: {
-        laborCharge: 220,
-        sparePartsEstimate: 90,
-        sparePartsList: ['Foam-Jet Chemical Coil Cleaner', 'Anti-bacterial Drain Disinfectant Tablets'],
-        totalEstimate: 310,
-      },
-      sparesChecklist: ['High-Pressure Foam Jet Gun', 'Fin Comb Brush', 'Condensate Drain Pipe'],
-    };
-  }
-  if (cat.includes('paint') || cat.includes('seep') || cat.includes('damp')) {
-    return {
-      title: 'Damp Wall Efflorescence & Plaster Water Seepage',
-      category: 'Painter',
-      confidence: 97.4,
-      severity: 'Medium (Moisture & Flaking Damage)',
-      description:
-        'Capillary moisture seepage causing paint flaking and chalking on the wall base. Requires scraping, waterproof putty treatment, and double coat primer.',
-      duration: '1.5 - 2 Hours',
-      pricing: {
-        laborCharge: 190,
-        sparePartsEstimate: 120,
-        sparePartsList: ['Waterproof Acrylic Putty (1kg)', 'Dr. Fixit Damp-Proof Primer'],
-        totalEstimate: 310,
-      },
-      sparesChecklist: ['80-Grit Sanding Block', 'Putty Blade', 'Anti-Fungal Waterproof Primer'],
-    };
-  }
-  if (cat.includes('clean')) {
-    return {
-      title: 'Hard Water Limescale & Tile Grout Deep Disinfection',
-      category: 'House Cleaning',
-      confidence: 98.5,
-      severity: 'Low (Deep Stain Treatment)',
-      description:
-        'Stubborn calcium carbonate scale deposits on bathroom floor tiles and sanitary fixtures. Requires single-disc scrubber application and bio-degradable acid descaler treatment.',
-      duration: '1 - 1.5 Hours',
-      pricing: {
-        laborCharge: 250,
-        sparePartsEstimate: 70,
-        sparePartsList: ['Bio-Degradable Acid Descaler (500ml)', 'Microfiber Polishing Pads'],
-        totalEstimate: 320,
-      },
-      sparesChecklist: ['Rotary Floor Scrubber', 'Rubber Squeegee', 'Industrial Microfiber Towels'],
-    };
-  }
-  return {
-    title: 'Loose Wooden Door Hinge & Jammed Drawer Track',
-    category: 'Carpenter',
-    confidence: 98.3,
-    severity: 'Low (Alignment & Screw Fix)',
-    description:
-      'Sagging door hinge screws worn loose from wooden frame causing rubbing against floorboard. Requires hardwood dowel packing, new 2-inch stainless steel screws, and hinge realignment.',
-    duration: '20 - 30 Mins',
-    pricing: {
-      laborCharge: 99,
-      sparePartsEstimate: 40,
-      sparePartsList: ['2-inch Stainless Steel Wood Screws (Pack of 12)', 'Hardwood Dowel Pegs'],
-      totalEstimate: 139,
-    },
-    sparesChecklist: ['Cordless Drill Driver', 'Countersink Bit', 'Hand Wood Chisel'],
-  };
-};
 
 const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
   const { language } = useLanguage();
   const navigate = useNavigate();
 
-  const [selectedCategory, setSelectedCategory] = useState('Electrician');
-  const [selectedImage, setSelectedImage] = useState(SAMPLE_PRESETS[2].image);
-  const [selectedSample, setSelectedSample] = useState(SAMPLE_PRESETS[2].id);
+  const [selectedCategory, setSelectedCategory] = useState('Auto');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState('');
-  const [customDescription, setCustomDescription] = useState('Switchboard repair, spark, loose wiring');
+  const [customDescription, setCustomDescription] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanStep, setScanStep] = useState(0);
   const [diagnosis, setDiagnosis] = useState(null);
+  const [recommendedWorkers, setRecommendedWorkers] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Instant Video Call Modal State
+  const [aiSource, setAiSource] = useState('');
   const [showVideoCall, setShowVideoCall] = useState(false);
 
-  const triggerDiagnosis = async (img, cat, desc, sample, fName) => {
-    setErrorMsg('');
-    setIsScanning(true);
-    setScanStep(1);
+  if (!isOpen) return null;
 
-    const targetImg = img !== undefined ? img : selectedImage;
-    const targetCat = cat !== undefined ? cat : selectedCategory;
-    const targetDesc = desc !== undefined ? desc : customDescription;
-    const targetSample = sample !== undefined ? sample : selectedSample;
-    const targetFName = fName !== undefined ? fName : uploadedFileName;
-
-    const timer1 = setTimeout(() => setScanStep(2), 200);
-    const timer2 = setTimeout(() => setScanStep(3), 400);
-
-    try {
-      const res = await api.post('/ai/diagnose-image', {
-        image: targetImg,
-        description: targetDesc,
-        sampleType: targetSample,
-        fileName: targetFName,
-        categoryHint: targetCat,
-      });
-
-      if (res.data && res.data.success && res.data.diagnosis) {
-        setTimeout(() => {
-          setDiagnosis(res.data.diagnosis);
-          setIsScanning(false);
-        }, 500);
-        return;
-      }
-      throw new Error('Fallback to local engine');
-    } catch (err) {
-      // Guaranteed Instant Fail-Safe Resolution
-      const fallbackResult = getLocalDiagnosis(targetCat, targetDesc, targetSample);
-      setTimeout(() => {
-        setDiagnosis(fallbackResult);
-        setIsScanning(false);
-      }, 500);
-    }
+  const compressImage = (dataUrl, maxDim = 800, quality = 0.78) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+          else { width = Math.round((width * maxDim) / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    });
   };
 
-  // Run automatically on first modal open
-  React.useEffect(() => {
-    if (isOpen && !diagnosis && !isScanning) {
-      triggerDiagnosis(
-        SAMPLE_PRESETS[2].image,
-        'Electrician',
-        SAMPLE_PRESETS[2].description,
-        SAMPLE_PRESETS[2].id,
-        ''
-      );
-    }
-  }, [isOpen]);
-
-  const handleFileUpload = (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (file.size > 8 * 1024 * 1024) {
-      setErrorMsg('Image file size must be under 8MB.');
-      return;
-    }
-
     setUploadedFileName(file.name);
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      setSelectedImage(dataUrl);
-      setSelectedSample('custom');
-      const activeCat = CATEGORY_OPTIONS.find((c) => c.id === selectedCategory);
-      const newDesc = activeCat?.defaultDesc || 'Visual damage and repair inspection';
-      setCustomDescription(newDesc);
-      // Auto-trigger instant diagnosis
-      triggerDiagnosis(dataUrl, selectedCategory, newDesc, 'custom', file.name);
+    reader.onloadend = async () => {
+      const orig = reader.result;
+      setImagePreview(orig);
+      const compressed = await compressImage(orig);
+      setSelectedImage(compressed);
+      setDiagnosis(null);
+      setErrorMsg('');
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSelectPreset = (preset) => {
-    setSelectedImage(preset.image);
-    setSelectedSample(preset.id);
-    setSelectedCategory(preset.category);
-    setUploadedFileName('');
-    setCustomDescription(preset.description);
-    // Auto-trigger instant diagnosis
-    triggerDiagnosis(preset.image, preset.category, preset.description, preset.id, '');
+  const handleClearImage = () => {
+    setSelectedImage(null); setImagePreview(null);
+    setUploadedFileName(''); setDiagnosis(null); setErrorMsg('');
   };
 
-  const handleSelectCategory = (cat) => {
-    setSelectedCategory(cat.id);
-    setCustomDescription(cat.defaultDesc);
-    // Auto-trigger instant diagnosis with selected image
-    triggerDiagnosis(selectedImage, cat.id, cat.defaultDesc, selectedSample, uploadedFileName);
+  const triggerDiagnosis = async () => {
+    if (!selectedImage) { setErrorMsg('Please take a photo or upload an image first.'); return; }
+    setErrorMsg(''); setIsScanning(true); setScanStep(0);
+    const t1 = setTimeout(() => setScanStep(1), 1800);
+    const t2 = setTimeout(() => setScanStep(2), 4000);
+    try {
+      const res = await api.post('/ai/diagnose-image', {
+        image: selectedImage,
+        description: customDescription,
+        categoryHint: selectedCategory === 'Auto' ? '' : selectedCategory,
+        fileName: uploadedFileName,
+        userCity: selectedLocation || 'Mumbai',
+      });
+      clearTimeout(t1); clearTimeout(t2);
+      if (res.data?.success && res.data?.diagnosis) {
+        setDiagnosis(res.data.diagnosis);
+        setRecommendedWorkers(res.data.recommendedWorkers || []);
+        setAiSource(res.data.source || 'Gemini Vision AI');
+        setIsScanning(false);
+        return;
+      }
+      throw new Error(res.data?.message || 'Unexpected AI response');
+    } catch (err) {
+      clearTimeout(t1); clearTimeout(t2);
+      setErrorMsg(err.response?.data?.message || err.message || 'Gemini Vision AI call failed.');
+      setIsScanning(false);
+    }
   };
 
-  const handleRunDiagnosis = () => {
-    triggerDiagnosis();
-  };
-
-  const handleBookService = () => {
-    if (!diagnosis) return;
+  const handleBookWorker = () => {
     onClose();
-    navigate(
-      `/explore-services?category=${encodeURIComponent(diagnosis.category)}&location=${encodeURIComponent(selectedLocation || '')}&issue=${encodeURIComponent(diagnosis.title)}`
-    );
+    navigate(`/explore-services?category=${encodeURIComponent(diagnosis?.category || 'Electrician')}&issue=${encodeURIComponent(diagnosis?.title || 'AI Diagnosed Issue')}`);
   };
 
-  if (!isOpen) return null;
+  const getSeverityStyle = (sev = '') => {
+    if (sev.toLowerCase().includes('low')) return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    if (sev.toLowerCase().includes('high')) return 'bg-red-100 text-red-800 border-red-200';
+    return 'bg-amber-100 text-amber-800 border-amber-200';
+  };
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-sans">
-        <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
-          {/* Top Gradient Header */}
-          <div className="bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 text-white p-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-500 to-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
-                <Sparkles className="w-6 h-6 fill-slate-950" />
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+        style={{ background: 'rgba(2, 8, 23, 0.85)', backdropFilter: 'blur(16px)' }}>
+
+        {/* Modal Shell */}
+        <div className="relative w-full max-w-2xl my-auto rounded-[2rem] overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7)] border border-white/10"
+          style={{ background: 'linear-gradient(145deg, #0f172a 0%, #111827 60%, #0d1f1e 100%)' }}>
+
+          {/* Accent glow */}
+          <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full opacity-20 blur-3xl pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #2dd4bf 0%, transparent 70%)' }} />
+
+          {/* Header */}
+          <div className="relative px-5 pt-5 pb-4 sm:px-7 sm:pt-6 border-b border-white/[0.06] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ background: 'linear-gradient(135deg, #14b8a6, #0891b2)', boxShadow: '0 0 20px rgba(20,184,166,0.4)' }}>
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg sm:text-xl font-black tracking-tight">
-                    SevaSetu AI Problem Diagnostic
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-white font-bold text-sm sm:text-base tracking-tight truncate">
+                    AI Vision Diagnostic
                   </h3>
-                  <span className="px-2 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full uppercase">
-                    Accurate Fair Price
+                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest"
+                    style={{ background: 'rgba(20,184,166,0.2)', color: '#2dd4bf', border: '1px solid rgba(20,184,166,0.3)' }}>
+                    Gemini Vision
                   </span>
                 </div>
-                <p className="text-xs text-teal-200 mt-0.5">
-                  Inspects visual damage & calculates accurate cooperative pricing with zero unfair markup.
+                <p className="text-[11px] mt-0.5 truncate" style={{ color: 'rgba(148,163,184,0.8)' }}>
+                  Snap a photo for instant AI inspection & fair price estimate
                 </p>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
+            <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.14)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}>
+              <X className="w-4 h-4 text-slate-300" />
             </button>
           </div>
 
-          <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+          {/* Body */}
+          <div className="px-5 py-5 sm:px-7 sm:py-6 max-h-[75vh] overflow-y-auto space-y-5">
+
+            {/* Error */}
             {errorMsg && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>{errorMsg}</span>
+              <div className="flex items-start gap-3 p-4 rounded-2xl"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-300 font-medium leading-relaxed">{errorMsg}</p>
               </div>
             )}
 
-            {/* Quick Demo Sample Presets */}
-            <div className="space-y-2">
-              <span className="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
-                1. Choose a Sample Issue or Upload Your Photo:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {SAMPLE_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      selectedSample === preset.id
-                        ? 'bg-teal-700 text-white shadow-sm ring-2 ring-teal-500'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                    }`}
-                  >
-                    {preset.title}
-                  </button>
-                ))}
+            {/* SCANNING STATE */}
+            {isScanning ? (
+              <div className="py-14 flex flex-col items-center gap-6">
+                {/* Orbital rings */}
+                <div className="relative w-24 h-24 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border-2 border-teal-500/20 animate-spin" style={{ animationDuration: '3s' }} />
+                  <div className="absolute inset-2 rounded-full border-2 border-teal-400/30 animate-spin" style={{ animationDuration: '2s', animationDirection: 'reverse' }} />
+                  <div className="absolute inset-4 rounded-full border-2 border-teal-300/40 animate-spin" style={{ animationDuration: '1.5s' }} />
+                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
+                    style={{ background: 'linear-gradient(135deg, #14b8a6, #0891b2)', boxShadow: '0 0 30px rgba(20,184,166,0.5)' }}>
+                    <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                  </div>
+                </div>
+                <div className="text-center space-y-2 max-w-xs">
+                  <h4 className="text-white font-bold text-base">Gemini Vision AI is analyzing...</h4>
+                  <p className="text-xs font-medium" style={{ color: '#2dd4bf' }}>{SCAN_STEPS[scanStep]}</p>
+                  <div className="flex justify-center gap-1.5 pt-1">
+                    {SCAN_STEPS.map((_, i) => (
+                      <div key={i} className="h-1 rounded-full transition-all duration-500"
+                        style={{ width: i <= scanStep ? 20 : 8, background: i <= scanStep ? '#2dd4bf' : 'rgba(255,255,255,0.15)' }} />
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* 2-Column Main Workspace */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-              {/* Left Column: Image Canvas, 1-Tap Category Selector & Upload (5 Cols) */}
-              <div className="md:col-span-5 space-y-3">
-                <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-900 h-48 w-full shadow-inner group">
-                  {selectedImage ? (
-                    <img
-                      src={selectedImage}
-                      alt="Problem inspection"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 text-center">
-                      <Camera className="w-8 h-8 mb-2" />
-                      <span className="text-xs font-semibold">No photo selected</span>
+            ) : !diagnosis ? (
+              /* UPLOAD FORM */
+              <div className="space-y-5">
+                {/* Image Upload */}
+                {imagePreview ? (
+                  <div className="relative rounded-2xl overflow-hidden" style={{ border: '2px solid rgba(20,184,166,0.5)' }}>
+                    <img src={imagePreview} alt="Uploaded" className="w-full h-52 object-contain" style={{ background: '#0a0f1e' }} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-white/90 truncate max-w-[60%]">{uploadedFileName}</span>
+                      <button onClick={handleClearImage} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all"
+                        style={{ background: 'rgba(239,68,68,0.85)', color: 'white' }}>
+                        <X className="w-3 h-3" /> Remove
+                      </button>
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { capture: 'environment', icon: <Camera className="w-6 h-6" />, title: 'Take Photo', sub: 'Open camera' },
+                      { capture: null, icon: <Upload className="w-6 h-6" />, title: 'Upload File', sub: 'Gallery / Device' },
+                    ].map((opt, i) => (
+                      <label key={i} className="group relative flex flex-col items-center justify-center gap-2 py-7 rounded-2xl cursor-pointer transition-all"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1.5px dashed rgba(255,255,255,0.12)' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.07)'; e.currentTarget.style.border = '1.5px dashed rgba(20,184,166,0.5)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.border = '1.5px dashed rgba(255,255,255,0.12)'; }}>
+                        <input type="file" accept="image/*" {...(opt.capture ? { capture: opt.capture } : {})} onChange={handleImageChange} className="hidden" />
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-teal-400 transition-transform group-hover:scale-110"
+                          style={{ background: 'rgba(20,184,166,0.15)' }}>
+                          {opt.icon}
+                        </div>
+                        <div className="text-center">
+                          <p className="text-white font-semibold text-sm">{opt.title}</p>
+                          <p className="text-[11px] mt-0.5" style={{ color: 'rgba(148,163,184,0.7)' }}>{opt.sub}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
 
-                  {/* Laser Scanning Effect */}
-                  {isScanning && (
-                    <div className="absolute inset-0 bg-teal-500/10 pointer-events-none">
-                      <div className="w-full h-1 bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-[0_0_15px_#2dd4bf] animate-bounce" />
-                      <div className="absolute bottom-3 inset-x-3 bg-slate-950/80 backdrop-blur-xs text-teal-300 p-2 rounded-xl text-center text-xs font-bold flex items-center justify-center gap-2">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-400" />
-                        <span>
-                          {scanStep === 1 && 'Scanning problem contours...'}
-                          {scanStep === 2 && 'Evaluating repair severity & parts...'}
-                          {scanStep >= 3 && 'Calculating exact fair price...'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bounding box indicator on diagnosed result */}
-                  {diagnosis && !isScanning && (
-                    <div className="absolute inset-3 border-2 border-amber-400 rounded-xl bg-amber-400/10 pointer-events-none flex items-start justify-between p-2">
-                      <span className="px-2 py-0.5 bg-amber-500 text-slate-950 text-[9px] font-black rounded uppercase">
-                        AI Verified
-                      </span>
-                      <span className="px-2 py-0.5 bg-black/70 text-white text-[9px] font-bold rounded">
-                        ₹{diagnosis.pricing?.totalEstimate}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Custom File Input */}
-                <div>
-                  <label className="w-full py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs">
-                    <Upload className="w-4 h-4 text-slate-600" />
-                    <span>{selectedSample === 'custom' ? 'Change Uploaded Photo' : 'Upload Problem Photo'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* 1-TAP CATEGORY OPTION SELECTOR (Plumbing, Electrician, AC, Cleaning, etc.) */}
-                <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] font-extrabold uppercase text-slate-600 tracking-wider block">
-                    Select Problem Category:
-                  </span>
-                  <div className="grid grid-cols-2 gap-1.5">
+                {/* Category Pills */}
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(148,163,184,0.6)' }}>
+                    Service Category
+                  </p>
+                  <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                     {CATEGORY_OPTIONS.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => handleSelectCategory(cat)}
-                        className={`p-2 rounded-xl text-left transition-all flex items-center justify-between cursor-pointer border ${
-                          selectedCategory === cat.id
-                            ? 'bg-teal-700 text-white border-teal-800 font-black shadow-2xs'
-                            : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 font-bold'
-                        }`}
-                      >
-                        <span className="text-xs truncate">{cat.label}</span>
-                        {selectedCategory === cat.id && (
-                          <Check className="w-3.5 h-3.5 text-amber-300 shrink-0 ml-1" />
-                        )}
+                      <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                        style={selectedCategory === cat.id
+                          ? { background: 'rgba(20,184,166,0.25)', color: '#2dd4bf', border: '1px solid rgba(20,184,166,0.5)' }
+                          : { background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <span>{cat.icon}</span> {cat.label}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Run Diagnosis CTA */}
-                <button
-                  type="button"
-                  onClick={handleRunDiagnosis}
-                  disabled={isScanning}
-                  className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isScanning ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>AI Diagnosing Problem...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Run AI Visual Diagnosis</span>
-                    </>
-                  )}
+                {/* Description */}
+                <input type="text" value={customDescription} onChange={e => setCustomDescription(e.target.value)}
+                  placeholder="Optional: describe the issue (e.g. water leak under sink, burnt socket...)"
+                  className="w-full px-4 py-3 rounded-xl text-xs font-medium outline-none transition-all"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', caretColor: '#2dd4bf' }}
+                  onFocus={e => e.target.style.border = '1px solid rgba(20,184,166,0.5)'}
+                  onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.1)'}
+                />
+
+                {/* CTA Button */}
+                <button onClick={triggerDiagnosis} disabled={!selectedImage}
+                  className="w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ background: selectedImage ? 'linear-gradient(135deg, #14b8a6, #0891b2)' : undefined, color: 'white', boxShadow: selectedImage ? '0 0 30px rgba(20,184,166,0.35)' : undefined }}>
+                  <Sparkles className="w-4 h-4" />
+                  Analyze with Gemini Vision AI
                 </button>
               </div>
 
-              {/* Right Column: Instant Diagnosis Report Card (7 Cols) */}
-              <div className="md:col-span-7 space-y-4">
-                {!diagnosis && !isScanning ? (
-                  <div className="h-full min-h-[300px] border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-3 bg-slate-50/50">
-                    <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center">
-                      <Sparkles className="w-6 h-6" />
+            ) : (
+              /* RESULT STATE */
+              <div className="space-y-5">
+                {/* AI Source Badge */}
+                <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
+                  style={{ background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.25)' }}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
+                    </span>
+                    <span className="text-xs font-semibold" style={{ color: '#2dd4bf' }}>
+                      {aiSource.includes('Gemini') ? 'Live Google Gemini Multimodal Vision AI' : aiSource}
+                    </span>
+                  </div>
+                  <button onClick={() => { setDiagnosis(null); setErrorMsg(''); }}
+                    className="flex items-center gap-1 text-[11px] font-semibold cursor-pointer transition-opacity hover:opacity-70"
+                    style={{ color: 'rgba(148,163,184,0.7)' }}>
+                    <RefreshCw className="w-3 h-3" /> Scan Again
+                  </button>
+                </div>
+
+                {/* Image + Issue Title */}
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-start">
+                  {/* Image */}
+                  <div className="sm:col-span-2 rounded-2xl overflow-hidden relative" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <img src={imagePreview || selectedImage} alt="Uploaded" className="w-full h-44 sm:h-full object-contain" style={{ background: '#0a0f1e' }} />
+                    <div className="absolute bottom-2 left-2 right-2 flex justify-between text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
+                      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.7)' }}>
+                      <span>Confidence: {diagnosis.confidence || 98.5}%</span>
+                      <span style={{ color: '#2dd4bf' }}>Verified AI</span>
                     </div>
+                  </div>
+
+                  {/* Issue Title + Severity + Description */}
+                  <div className="sm:col-span-3 space-y-3">
                     <div>
-                      <h4 className="font-extrabold text-sm text-slate-900">
-                        AI Diagnosis Ready
-                      </h4>
-                      <p className="text-xs text-slate-500 max-w-xs mt-1">
-                        Upload a photo or choose an issue, select your category, and click <strong>"Run AI Visual Diagnosis"</strong>.
-                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(148,163,184,0.5)' }}>Detected Issue</p>
+                      <h4 className="text-white font-bold text-sm sm:text-base leading-snug">{diagnosis.title}</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${getSeverityStyle(diagnosis.severity)}`}>
+                        {diagnosis.severity}
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold"
+                        style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.25)' }}>
+                        ⏱ {diagnosis.duration}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(148,163,184,0.8)' }}>{diagnosis.description}</p>
+                  </div>
+                </div>
+
+                {/* Cost Breakdown */}
+                <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.12), rgba(8,145,178,0.08))', border: '1px solid rgba(20,184,166,0.2)' }}>
+                  <div className="px-5 py-4 space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(148,163,184,0.5)' }}>Indian Cooperative Fair-Wage Estimate</p>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Labour Charge', value: diagnosis.pricing?.laborCharge },
+                        { label: 'Spare Parts', value: diagnosis.pricing?.sparePartsEstimate },
+                      ].map((item, i) => (
+                        <div key={i} className="flex justify-between text-xs">
+                          <span style={{ color: 'rgba(148,163,184,0.7)' }}>{item.label}</span>
+                          <span className="font-semibold text-white">₹{item.value || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center pt-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                      <span className="text-xs font-semibold" style={{ color: 'rgba(148,163,184,0.8)' }}>Total Estimate</span>
+                      <span className="text-2xl font-black" style={{ color: '#fbbf24' }}>₹{diagnosis.pricing?.totalEstimate}</span>
                     </div>
                   </div>
-                ) : isScanning ? (
-                  <div className="h-full min-h-[300px] border border-teal-200 bg-teal-50/40 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 animate-pulse">
-                    <div className="w-12 h-12 rounded-full border-4 border-teal-600 border-t-transparent animate-spin" />
-                    <p className="text-xs font-bold text-teal-900">
-                      SevaSetu AI Vision is evaluating damage and calculating exact fair wage breakdown...
-                    </p>
-                  </div>
-                ) : (
-                  /* ACCURATE ITEMIZED DIAGNOSIS REPORT */
-                  <div className="space-y-3.5 animate-in fade-in zoom-in-95 duration-200">
-                    {/* Top Result Card */}
-                    <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-2 shadow-md">
-                      <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-0.5 bg-teal-500 text-slate-950 font-black text-[10px] rounded-full uppercase tracking-wider flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> {diagnosis.category} • {diagnosis.severity}
-                        </span>
-                        <span className="text-[11px] font-bold text-amber-400">
-                          ⭐ {diagnosis.confidence}% Match
-                        </span>
-                      </div>
 
-                      <h4 className="text-sm sm:text-base font-black text-white">{diagnosis.title}</h4>
-
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-amber-300 font-medium flex items-center gap-1 text-[11px]">
-                          <Clock className="w-3 h-3" /> Est. Time: {diagnosis.duration}
-                        </span>
-                        <span className="text-slate-400">•</span>
-                        <span className="text-teal-300 text-[11px] font-semibold">100% Transparent Price</span>
-                      </div>
-
-                      <p className="text-xs text-slate-300 leading-relaxed pt-1 border-t border-white/10">
-                        {diagnosis.description}
-                      </p>
-                    </div>
-
-                    {/* Itemized Accurate Cost Estimation Table */}
-                    <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-2">
-                      <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
-                        <span className="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1">
-                          <DollarSign className="w-4 h-4 text-amber-600" /> Itemized Fair Cost Breakdown
-                        </span>
-                        <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded">
-                          Cooperative Protected
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs text-slate-700">
-                        <div className="flex justify-between">
-                          <span>Skilled Labor Charge:</span>
-                          <span className="font-bold text-slate-900">₹{diagnosis.pricing?.laborCharge}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Required Consumables / Spares:</span>
-                          <span className="font-bold text-slate-900">₹{diagnosis.pricing?.sparePartsEstimate}</span>
-                        </div>
-                        {Array.isArray(diagnosis.pricing?.sparePartsList) && (
-                          <p className="text-[10px] text-slate-500 italic pl-2">
-                            Parts included: {diagnosis.pricing.sparePartsList.join(', ')}
-                          </p>
-                        )}
-                        <div className="pt-2 border-t border-amber-200 flex justify-between items-center text-sm font-black text-amber-950">
-                          <span>Total Estimated Fair Price:</span>
-                          <span className="text-xl text-teal-900 font-black">
-                            ₹{diagnosis.pricing?.totalEstimate}
+                  {/* Spares */}
+                  {diagnosis.sparesChecklist?.length > 0 && (
+                    <div className="px-5 pb-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(148,163,184,0.5)' }}>Tools & Spares Required</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {diagnosis.sparesChecklist.map((sp, i) => (
+                          <span key={i} className="px-2.5 py-1 rounded-lg text-[11px] font-medium"
+                            style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            ✓ {sp}
                           </span>
-                        </div>
+                        ))}
                       </div>
                     </div>
+                  )}
+                </div>
 
-                    {/* Spares Checklist for Worker */}
-                    {Array.isArray(diagnosis.sparesChecklist) && (
-                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                        <span className="text-[10px] font-bold uppercase text-slate-600 flex items-center gap-1">
-                          <Wrench className="w-3 h-3 text-slate-600" /> Worker Toolkit Checklist:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {diagnosis.sparesChecklist.map((item, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[9px] font-medium text-slate-800">
-                              ✓ {item}
-                            </span>
-                          ))}
+                {/* Recommended Workers */}
+                {recommendedWorkers.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(148,163,184,0.5)' }}>
+                      Verified Workers Near You · {selectedLocation || 'Mumbai'}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {recommendedWorkers.map((w) => (
+                        <div key={w._id} className="flex flex-col gap-2.5 p-3.5 rounded-2xl transition-all"
+                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                          onMouseEnter={e => e.currentTarget.style.border = '1px solid rgba(20,184,166,0.4)'}
+                          onMouseLeave={e => e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'}>
+                          <div className="flex items-center gap-2.5">
+                            <img src={w.photo} alt={w.name} className="w-9 h-9 rounded-full object-cover shrink-0"
+                              style={{ border: '2px solid rgba(20,184,166,0.5)' }} />
+                            <div className="min-w-0">
+                              <p className="text-white font-semibold text-xs truncate">{w.name}</p>
+                              <p className="text-[10px] flex items-center gap-1" style={{ color: 'rgba(148,163,184,0.6)' }}>
+                                <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" /> {w.rating} · {w.experienceYears}y exp
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                            <span className="text-xs font-bold" style={{ color: '#2dd4bf' }}>₹{w.hourlyRate}/hr</span>
+                            <button onClick={() => handleBookWorker()}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all"
+                              style={{ background: 'rgba(20,184,166,0.2)', color: '#2dd4bf', border: '1px solid rgba(20,184,166,0.3)' }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(20,184,166,0.35)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(20,184,166,0.2)'}>
+                              Book <ChevronRight className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* 2-WAY BOOKING ACTION: Video Help (₹49) OR In-Person Doorstep Visit */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                      {/* Video Call Guidance Button */}
-                      <button
-                        type="button"
-                        onClick={() => setShowVideoCall(true)}
-                        className="py-3 px-3 bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 hover:from-teal-800 hover:to-slate-800 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-teal-500/40"
-                      >
-                        <Video className="w-4 h-4 text-emerald-400 animate-pulse" />
-                        <span>Instant Video Help (₹49)</span>
-                      </button>
-
-                      {/* In-Person Physical Visit Button */}
-                      <button
-                        type="button"
-                        onClick={handleBookService}
-                        className="py-3 px-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Book Visit (₹{diagnosis.pricing?.totalEstimate})</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                      ))}
                     </div>
                   </div>
                 )}
+
+                {/* Book CTA */}
+                <button onClick={handleBookWorker}
+                  className="w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  style={{ background: 'linear-gradient(135deg, #14b8a6, #0891b2)', color: 'white', boxShadow: '0 0 25px rgba(20,184,166,0.3)' }}>
+                  <Wrench className="w-4 h-4" />
+                  Book a Verified Worker for This Issue
+                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Instant Video Call Modal */}
-      <InstantVideoCallModal
-        isOpen={showVideoCall}
-        onClose={() => setShowVideoCall(false)}
-        preselectedCategory={diagnosis?.category || selectedCategory}
-        initialIssueTitle={diagnosis?.title || ''}
-      />
+      <InstantVideoCallModal isOpen={showVideoCall} onClose={() => setShowVideoCall(false)} />
     </>
   );
 };
