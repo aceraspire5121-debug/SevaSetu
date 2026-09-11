@@ -19,7 +19,7 @@ const CATEGORY_OPTIONS = [
 ];
 
 const SCAN_STEPS = [
-  'Uploading photo to Gemini Multimodal Vision...',
+  'Uploading photo to SevaVision Neural Engine...',
   'Analyzing visual damage, material wear & severity...',
   'Calculating Indian cooperative fair-wage pricing...',
 ];
@@ -100,7 +100,7 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
       if (res.data?.success && res.data?.diagnosis) {
         setDiagnosis(res.data.diagnosis);
         setRecommendedWorkers(res.data.recommendedWorkers || []);
-        setAiSource(res.data.source || 'Gemini Vision AI');
+        setAiSource(res.data.source || 'SevaVision AI');
         setIsScanning(false);
         return;
       }
@@ -108,11 +108,11 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
     } catch (err) {
       clearTimeout(t1); clearTimeout(t2);
       setIsScanning(false);
-      // Handle image rejected by Gemini (422 = irrelevant image)
+      // Handle image rejected by AI (422 = irrelevant image)
       if (err.response?.status === 422 && err.response?.data?.rejected) {
         setRejectedMsg(err.response.data.message);
       } else {
-        setErrorMsg(err.response?.data?.message || err.message || 'Gemini Vision AI call failed.');
+        setErrorMsg(err.response?.data?.message || err.message || 'SevaVision AI diagnosis call failed.');
       }
     }
   };
@@ -156,7 +156,7 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
                   </h3>
                   <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest"
                     style={{ background: 'rgba(20,184,166,0.2)', color: '#2dd4bf', border: '1px solid rgba(20,184,166,0.3)' }}>
-                    Gemini Vision
+                    SevaVision AI™
                   </span>
                 </div>
                 <p className="text-[11px] mt-0.5 truncate" style={{ color: 'rgba(148,163,184,0.8)' }}>
@@ -232,7 +232,7 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
                   </div>
                 </div>
                 <div className="text-center space-y-2 max-w-xs">
-                  <h4 className="text-white font-bold text-base">Gemini Vision AI is analyzing...</h4>
+                  <h4 className="text-white font-bold text-base">SevaVision AI is analyzing...</h4>
                   <p className="text-xs font-medium" style={{ color: '#2dd4bf' }}>{SCAN_STEPS[scanStep]}</p>
                   <div className="flex justify-center gap-1.5 pt-1">
                     {SCAN_STEPS.map((_, i) => (
@@ -315,7 +315,7 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
                   className="w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{ background: selectedImage ? 'linear-gradient(135deg, #14b8a6, #0891b2)' : undefined, color: 'white', boxShadow: selectedImage ? '0 0 30px rgba(20,184,166,0.35)' : undefined }}>
                   <Sparkles className="w-4 h-4" />
-                  Analyze with Gemini Vision AI
+                  Analyze with SevaVision AI
                 </button>
               </div>
 
@@ -331,7 +331,7 @@ const AiDiagnosticModal = ({ isOpen, onClose, selectedLocation }) => {
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
                     </span>
                     <span className="text-xs font-semibold" style={{ color: '#2dd4bf' }}>
-                      {aiSource.includes('Gemini') ? 'Live Google Gemini Multimodal Vision AI' : aiSource}
+                      Live SevaVision™ Multimodal AI Diagnostic Engine
                     </span>
                   </div>
                   <button onClick={() => { setDiagnosis(null); setErrorMsg(''); }}

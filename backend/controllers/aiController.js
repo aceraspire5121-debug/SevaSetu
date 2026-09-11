@@ -331,12 +331,12 @@ Respond strictly in valid JSON only (no extra text):
           if (geminiData.status === 429) {
             return res.status(429).json({
               success: false,
-              message: 'Google Gemini Free Tier Rate Limit hit (Max 20 scans per minute). Please wait 30-40 seconds and try again.',
+              message: 'SevaVision AI Diagnostic Rate Limit hit (Max 20 scans per minute). Please wait 30-40 seconds and try again.',
             });
           }
           return res.status(500).json({
             success: false,
-            message: `Google Gemini API Error (${geminiData.status}): ${geminiData.data?.error?.message || 'Failed to analyze image.'}`,
+            message: `SevaVision AI Error (${geminiData.status}): ${geminiData.data?.error?.message || 'Failed to analyze image.'}`,
           });
         }
 
@@ -344,7 +344,7 @@ Respond strictly in valid JSON only (no extra text):
         if (aiResult.candidates && aiResult.candidates[0]?.content?.parts[0]?.text) {
           const parsed = JSON.parse(aiResult.candidates[0].content.parts[0].text);
 
-          // If Gemini flagged image as irrelevant to home services
+          // If AI flagged image as irrelevant to home services
           if (parsed.rejected === true) {
             return res.status(422).json({
               success: false,
@@ -382,24 +382,24 @@ Respond strictly in valid JSON only (no extra text):
             success: true,
             diagnosis: parsed,
             recommendedWorkers,
-            source: 'Gemini Multimodal Vision Engine',
+            source: 'SevaVision Multimodal Engine',
           });
         }
 
-        return res.status(500).json({ success: false, message: 'Gemini returned no valid candidates.' });
+        return res.status(500).json({ success: false, message: 'SevaVision AI returned no valid candidates.' });
 
       } catch (geminiErr) {
-        console.error('Gemini vision API error:', geminiErr.message);
+        console.error('SevaVision AI error:', geminiErr.message);
         return res.status(500).json({
           success: false,
-          message: `Gemini Vision AI call failed: ${geminiErr.message}`,
+          message: `SevaVision AI diagnosis call failed: ${geminiErr.message}`,
         });
       }
     }
 
     return res.status(400).json({
       success: false,
-      message: 'GEMINI_API_KEY is not configured or invalid image format.',
+      message: 'SevaVision AI service is not configured or invalid image format.',
     });
 
     // 2. High-Precision Autonomous AI Diagnostic Engine
