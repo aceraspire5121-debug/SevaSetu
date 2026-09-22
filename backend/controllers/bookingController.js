@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const Worker = require('../models/Worker');
 const User = require('../models/User');
+const Society = require('../models/Society');
 const { notifyBookingUpdate, notifyNewBooking } = require('../sockets/bookingSocket');
 const {
   normalizeCityName,
@@ -224,8 +225,48 @@ exports.getUserBookings = async (req, res, next) => {
           },
         ],
       };
-    } else if (req.user.role === 'societyAdmin' || req.user.role === 'federationAdmin') {
-      query = {};
+    } else if (req.user.role === 'societyAdmin') {
+      let societyId = req.user.society;
+      if (!societyId) {
+        const soc = await Society.findOne({ $or: [{ admin: req.user._id }, { contactEmail: req.user.email }] });
+        if (soc) societyId = soc._id;
+      }
+
+      if (!societyId) {
+        return res.status(200).json({ success: true, count: 0, data: [] });
+      }
+
+      const societyWorkers = await Worker.find({ society: societyId }).select('user');
+      const workerUserIds = societyWorkers.map((w) => w.user).filter(Boolean);
+
+      if (req.query.workerId) {
+        query = { worker: req.query.workerId };
+      } else {
+        query = { worker: { $in: workerUserIds } };
+      }
+
+      if (req.query.status && req.query.status !== 'all') {
+        query.status = req.query.status;
+      }
+    } else if (req.user.role === 'federationAdmin') {
+      if (req.query.societyId) {
+        const societyWorkers = await Worker.find({ society: req.query.societyId }).select('user');
+        const workerUserIds = societyWorkers.map((w) => w.user).filter(Boolean);
+
+        if (req.query.workerId) {
+          query = { worker: req.query.workerId };
+        } else {
+          query = { worker: { $in: workerUserIds } };
+        }
+      } else if (req.query.workerId) {
+        query = { worker: req.query.workerId };
+      } else {
+        query = {};
+      }
+
+      if (req.query.status && req.query.status !== 'all') {
+        query.status = req.query.status;
+      }
     }
 
     const bookings = await Booking.find(query)

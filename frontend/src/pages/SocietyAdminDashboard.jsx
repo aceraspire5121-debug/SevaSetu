@@ -21,6 +21,12 @@ import {
   Star,
   Award,
   Sparkles,
+  Phone,
+  MapPin,
+  Calendar,
+  Clock,
+  Filter,
+  User,
 } from 'lucide-react';
 import SkillPassportModal from '../components/SkillPassportModal';
 
@@ -37,8 +43,12 @@ const SocietyAdminDashboard = () => {
   const [workerPage, setWorkerPage] = useState(1);
   const workersPerPage = 5;
 
+  // Bookings Filter & Pagination States
+  const [bookingWorkerFilter, setBookingWorkerFilter] = useState('');
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
+  const [bookingSearchQuery, setBookingSearchQuery] = useState('');
   const [bookingPage, setBookingPage] = useState(1);
-  const bookingsPerPage = 5;
+  const bookingsPerPage = 6;
 
   // Aadhaar Document Inspection Modal
   const [inspectingWorker, setInspectingWorker] = useState(null);
@@ -132,6 +142,26 @@ const SocietyAdminDashboard = () => {
   const allWorkers = societyData?.workers || [];
   const recentBookings = societyData?.recentBookings || [];
 
+  // Worker-wise booking aggregations for this society
+  const workerBookingStats = allWorkers.map((w) => {
+    const wUserId = w.user?._id;
+    const wBookings = recentBookings.filter((b) => {
+      const bWorkerId = b.worker?._id || b.worker;
+      return bWorkerId && bWorkerId.toString() === wUserId?.toString();
+    });
+    const completed = wBookings.filter((b) => b.status === 'completed').length;
+    const active = wBookings.filter((b) => ['requested', 'accepted', 'in_progress'].includes(b.status)).length;
+    const revenue = wBookings.filter((b) => b.paymentStatus === 'paid').reduce((sum, b) => sum + (b.price || 0), 0);
+
+    return {
+      worker: w,
+      totalBookings: wBookings.length,
+      completed,
+      active,
+      revenue,
+    };
+  });
+
   // Filter Workers Roster based on Search Query
   const filteredWorkers = allWorkers.filter((w) => {
     const q = workerSearchQuery.toLowerCase();
@@ -142,15 +172,33 @@ const SocietyAdminDashboard = () => {
   });
 
   // Pagination for Workers Roster
-  const totalWorkerPages = Math.ceil(filteredWorkers.length / workersPerPage);
+  const totalWorkerPages = Math.ceil(filteredWorkers.length / workersPerPage) || 1;
   const paginatedWorkers = filteredWorkers.slice(
     (workerPage - 1) * workersPerPage,
     workerPage * workersPerPage
   );
 
-  // Pagination for Society Bookings Overview
-  const totalBookingPages = Math.ceil(recentBookings.length / bookingsPerPage);
-  const paginatedBookings = recentBookings.slice(
+  // Filter Bookings by Selected Worker, Status, and Search Query
+  const filteredBookings = recentBookings.filter((b) => {
+    const bWorkerId = (b.worker?._id || b.worker || '').toString();
+    const matchesWorker = !bookingWorkerFilter || bWorkerId === bookingWorkerFilter;
+    const matchesStatus = bookingStatusFilter === 'all' || b.status === bookingStatusFilter;
+    const q = bookingSearchQuery.toLowerCase().trim();
+    const matchesQuery =
+      !q ||
+      (b.bookingId || '').toLowerCase().includes(q) ||
+      (b.customer?.name || '').toLowerCase().includes(q) ||
+      (b.worker?.name || '').toLowerCase().includes(q) ||
+      (b.category || '').toLowerCase().includes(q) ||
+      (b.address || '').toLowerCase().includes(q) ||
+      (b.city || '').toLowerCase().includes(q);
+
+    return matchesWorker && matchesStatus && matchesQuery;
+  });
+
+  // Pagination for Filtered Society Bookings
+  const totalBookingPages = Math.ceil(filteredBookings.length / bookingsPerPage) || 1;
+  const paginatedBookings = filteredBookings.slice(
     (bookingPage - 1) * bookingsPerPage,
     bookingPage * bookingsPerPage
   );
@@ -492,64 +540,312 @@ const SocietyAdminDashboard = () => {
         </div>
       </div>
 
-      {/* SECTION 4: Society Bookings Monitor with Pagination */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+      {/* SECTION 4: Society Bookings Monitor with Worker-Wise Grouping & Pagination */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-4">
           <div>
             <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-teal-600" /> Society Bookings Overview ({recentBookings.length})
+              <Briefcase className="w-5 h-5 text-teal-600" /> Society Worker Bookings ({filteredBookings.length})
             </h3>
-            {recentBookings.length > 0 && (
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                Showing {Math.min((bookingPage - 1) * bookingsPerPage + 1, recentBookings.length)}-
-                {Math.min(bookingPage * bookingsPerPage, recentBookings.length)} of {recentBookings.length} Society Bookings
-              </p>
-            )}
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Monitor jobs, active assignments, and revenue strictly for workers of {societyData?.society?.name || 'this Society'}
+            </p>
           </div>
 
           {totalBookingPages > 1 && (
-            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
               Page {bookingPage} of {totalBookingPages}
             </span>
           )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 uppercase font-semibold">
-                <th className="py-3 px-2">Booking ID</th>
-                <th className="py-3 px-2">Worker</th>
-                <th className="py-3 px-2">Customer</th>
-                <th className="py-3 px-2">Category</th>
-                <th className="py-3 px-2">Date</th>
-                <th className="py-3 px-2">Status</th>
-                <th className="py-3 px-2 text-right">Price</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedBookings.map((b) => (
-                <tr key={b._id} className="hover:bg-slate-50">
-                  <td className="py-3 px-2 font-bold text-slate-900">#{b.bookingId}</td>
-                  <td className="py-3 px-2 font-semibold text-slate-800">{b.worker?.name || 'Worker'}</td>
-                  <td className="py-3 px-2 text-slate-600">{b.customer?.name || 'Customer'}</td>
-                  <td className="py-3 px-2 text-teal-800 font-bold">{b.category}</td>
-                  <td className="py-3 px-2 text-slate-500">{b.date}</td>
-                  <td className="py-3 px-2">
-                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase ${
-                      b.paymentStatus === 'paid'
-                        ? 'bg-teal-100 text-teal-800'
-                        : 'bg-slate-100 text-slate-800'
+        {/* WORKER SELECTOR & PERFORMANCE CARDS */}
+        {allWorkers.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-teal-600" /> Filter Bookings by Registered Worker
+              </span>
+              {bookingWorkerFilter && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookingWorkerFilter('');
+                    setBookingPage(1);
+                  }}
+                  className="text-xs text-teal-700 hover:text-teal-900 font-bold underline cursor-pointer"
+                >
+                  Show All Workers
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* All Workers Summary Card */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingWorkerFilter('');
+                  setBookingPage(1);
+                }}
+                className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  bookingWorkerFilter === ''
+                    ? 'bg-teal-900 text-white border-teal-950 shadow-md ring-2 ring-teal-600'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-900'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
+                      bookingWorkerFilter === '' ? 'bg-teal-800 text-teal-200' : 'bg-slate-200 text-slate-700'
                     }`}>
-                      {b.status} {b.paymentStatus === 'paid' && '(Paid)'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-right font-extrabold text-slate-900">₹{b.price}</td>
-                </tr>
+                      🏢
+                    </div>
+                    <span className="font-extrabold text-xs">All Society Workers</span>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    bookingWorkerFilter === '' ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {allWorkers.length} Workers
+                  </span>
+                </div>
+                <div className="mt-2.5 pt-2 border-t border-white/10 flex justify-between items-center text-[11px]">
+                  <span className={bookingWorkerFilter === '' ? 'text-teal-200' : 'text-slate-500'}>
+                    Total Bookings: <strong>{recentBookings.length}</strong>
+                  </span>
+                  <span className={`font-bold ${bookingWorkerFilter === '' ? 'text-amber-300' : 'text-teal-700'}`}>
+                    ₹{stats.totalRevenue || 0}
+                  </span>
+                </div>
+              </button>
+
+              {/* Individual Worker Cards */}
+              {workerBookingStats.map((item) => {
+                const isSelected = bookingWorkerFilter === item.worker.user?._id;
+                return (
+                  <button
+                    key={item.worker._id}
+                    type="button"
+                    onClick={() => {
+                      setBookingWorkerFilter(isSelected ? '' : item.worker.user?._id);
+                      setBookingPage(1);
+                    }}
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-teal-800 text-white border-teal-900 shadow-md ring-2 ring-teal-500'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={item.worker.user?.profilePhoto || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=300&q=80'}
+                        alt={item.worker.user?.name}
+                        className="w-8 h-8 rounded-full object-cover border border-teal-400 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-extrabold text-xs truncate flex items-center gap-1">
+                          {item.worker.user?.name}
+                          {item.worker.approvalStatus === 'approved' && (
+                            <Award className={`w-3 h-3 shrink-0 ${isSelected ? 'text-amber-300' : 'text-teal-600'}`} />
+                          )}
+                        </p>
+                        <p className={`text-[10px] truncate ${isSelected ? 'text-teal-200' : 'text-slate-500'}`}>
+                          {item.worker.categories?.join(', ')}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={`mt-2.5 pt-2 border-t flex justify-between items-center text-[11px] ${
+                      isSelected ? 'border-teal-700/50 text-teal-200' : 'border-slate-200 text-slate-500'
+                    }`}>
+                      <span>
+                        Jobs: <strong className={isSelected ? 'text-white' : 'text-slate-800'}>{item.totalBookings}</strong> ({item.active} active)
+                      </span>
+                      <span className={`font-bold ${isSelected ? 'text-amber-300' : 'text-teal-700'}`}>
+                        ₹{item.revenue}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* SEARCH & STATUS FILTER BAR */}
+        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={bookingSearchQuery}
+              onChange={(e) => {
+                setBookingSearchQuery(e.target.value);
+                setBookingPage(1);
+              }}
+              placeholder="Search by customer name, worker name, booking ID (#SSB-...), address..."
+              className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-teal-600 font-medium"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <div className="flex items-center gap-1 shrink-0">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'requested', label: 'Requested' },
+                { id: 'accepted', label: 'Accepted' },
+                { id: 'in_progress', label: 'In Progress' },
+                { id: 'completed', label: 'Completed' },
+                { id: 'cancelled', label: 'Cancelled' },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => {
+                    setBookingStatusFilter(st.id);
+                    setBookingPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                    bookingStatusFilter === st.id
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {st.label}
+                </button>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
+
+        {/* BOOKINGS TABLE */}
+        {filteredBookings.length === 0 ? (
+          <div className="text-center py-10 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+            <Briefcase className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-700">No Bookings Found</p>
+            <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+              {bookingWorkerFilter || bookingStatusFilter !== 'all' || bookingSearchQuery
+                ? 'Try resetting your search query or status filter to see all society bookings.'
+                : 'No bookings have been logged yet for workers in this society.'}
+            </p>
+            {(bookingWorkerFilter || bookingStatusFilter !== 'all' || bookingSearchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingWorkerFilter('');
+                  setBookingStatusFilter('all');
+                  setBookingSearchQuery('');
+                  setBookingPage(1);
+                }}
+                className="mt-2 px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 uppercase font-semibold">
+                  <th className="py-3 px-3">Booking ID & Date</th>
+                  <th className="py-3 px-3">Assigned Worker</th>
+                  <th className="py-3 px-3">Customer & Location</th>
+                  <th className="py-3 px-3">Service Category</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3 text-right">Fare & Payment</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedBookings.map((b) => {
+                  const statusColors = {
+                    requested: 'bg-amber-100 text-amber-900 border-amber-200',
+                    accepted: 'bg-blue-100 text-blue-900 border-blue-200',
+                    in_progress: 'bg-purple-100 text-purple-900 border-purple-200',
+                    completed: 'bg-emerald-100 text-emerald-900 border-emerald-200',
+                    cancelled: 'bg-red-100 text-red-900 border-red-200',
+                    rejected: 'bg-rose-100 text-rose-900 border-rose-200',
+                  };
+
+                  return (
+                    <tr key={b._id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-3">
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-black text-slate-900 block text-xs">
+                            #{b.bookingId || b._id?.substring(0, 8)}
+                          </span>
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span>{b.date}</span>
+                            {b.timeSlot && <span className="text-slate-400">• {b.timeSlot}</span>}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                            {b.worker?.name ? b.worker.name.charAt(0) : 'W'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{b.worker?.name || 'Assigned Worker'}</p>
+                            <p className="text-[11px] text-slate-500">{b.worker?.phone || 'No phone'}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-3">
+                        <div className="space-y-0.5 max-w-xs">
+                          <p className="font-bold text-slate-900">{b.customer?.name || 'Customer'}</p>
+                          <p className="text-[11px] text-slate-600 flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-slate-400 shrink-0" /> {b.customer?.phone || b.phone || 'N/A'}
+                          </p>
+                          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate" title={`${b.address}, ${b.city}`}>
+                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" /> {b.address || b.city}
+                          </p>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-3">
+                        <span className="font-extrabold text-teal-800 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-lg inline-block text-[11px]">
+                          {b.category}
+                        </span>
+                        {b.notes && (
+                          <p className="text-[10px] text-slate-400 mt-1 italic line-clamp-1" title={b.notes}>
+                            "{b.notes}"
+                          </p>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-3">
+                        <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] uppercase border tracking-wide inline-block ${
+                          statusColors[b.status] || 'bg-slate-100 text-slate-800 border-slate-200'
+                        }`}>
+                          {b.status?.replace('_', ' ')}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-3 text-right">
+                        <div className="space-y-0.5">
+                          <p className="font-black text-slate-900 text-sm">₹{b.price}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${
+                            b.paymentStatus === 'paid'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}>
+                            {b.paymentStatus === 'paid' ? 'Paid' : 'Payment Pending'}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination Controls */}
         {totalBookingPages > 1 && (
@@ -557,7 +853,7 @@ const SocietyAdminDashboard = () => {
             <button
               disabled={bookingPage === 1}
               onClick={() => setBookingPage((p) => Math.max(p - 1, 1))}
-              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" /> Previous Page
             </button>
@@ -567,7 +863,7 @@ const SocietyAdminDashboard = () => {
                 <button
                   key={idx + 1}
                   onClick={() => setBookingPage(idx + 1)}
-                  className={`w-8 h-8 rounded-xl text-xs font-bold border transition-colors ${
+                  className={`w-8 h-8 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
                     bookingPage === idx + 1
                       ? 'bg-teal-700 text-white border-teal-800 shadow-sm'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -581,7 +877,7 @@ const SocietyAdminDashboard = () => {
             <button
               disabled={bookingPage === totalBookingPages}
               onClick={() => setBookingPage((p) => Math.min(p + 1, totalBookingPages))}
-              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
             >
               Next Page <ChevronRight className="w-4 h-4" />
             </button>

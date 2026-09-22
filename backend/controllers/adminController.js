@@ -41,6 +41,43 @@ exports.getFederationDashboard = async (req, res, next) => {
       };
     });
 
+    // Society-wise breakdown of workers, bookings & revenue
+    const allSocieties = await Society.find().sort({ name: 1 });
+    const workerToSocietyMap = {};
+    workers.forEach((w) => {
+      if (w.user && w.society) {
+        const socId = (w.society._id || w.society).toString();
+        workerToSocietyMap[w.user._id.toString()] = socId;
+      }
+    });
+
+    const societyBreakdown = allSocieties.map((soc) => {
+      const socIdStr = soc._id.toString();
+      const socWorkers = workers.filter((w) => w.society && (w.society._id || w.society).toString() === socIdStr);
+      const socBookings = bookings.filter((b) => b.worker && workerToSocietyMap[b.worker.toString()] === socIdStr);
+      const socPaidRevenue = socBookings.filter((b) => b.paymentStatus === 'paid').reduce((sum, b) => sum + (b.price || 0), 0);
+      const socActiveBookings = socBookings.filter((b) => ['requested', 'accepted', 'in_progress'].includes(b.status)).length;
+      const socCompletedBookings = socBookings.filter((b) => b.status === 'completed').length;
+
+      return {
+        _id: soc._id,
+        name: soc.name,
+        code: soc.code,
+        city: soc.city,
+        pincode: soc.pincode,
+        address: soc.address,
+        contactEmail: soc.contactEmail,
+        contactPhone: soc.contactPhone,
+        totalWorkers: socWorkers.length,
+        approvedWorkers: socWorkers.filter((w) => w.approvalStatus === 'approved').length,
+        pendingWorkers: socWorkers.filter((w) => w.approvalStatus === 'pending').length,
+        totalBookings: socBookings.length,
+        activeBookings: socActiveBookings,
+        completedBookings: socCompletedBookings,
+        totalRevenue: socPaidRevenue,
+      };
+    });
+
     res.status(200).json({
       success: true,
       stats: {
@@ -53,6 +90,7 @@ exports.getFederationDashboard = async (req, res, next) => {
         totalRevenue,
       },
       categoryBreakdown: categoryWorkerCounts,
+      societyBreakdown,
     });
   } catch (error) {
     next(error);

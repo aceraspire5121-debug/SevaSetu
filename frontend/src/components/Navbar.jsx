@@ -35,9 +35,12 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const profileDropdownRef = useRef(null);
 
-  // Live Active Bookings Count (polls every 8s)
+  // Live Active Bookings Count (polls every 8s only for customers)
   useEffect(() => {
-    if (!user) { setActiveBookingsCount(0); return; }
+    if (!user || user.role !== 'customer') {
+      setActiveBookingsCount(0);
+      return;
+    }
     const fetchActiveBookings = async () => {
       try {
         const res = await api.get('/bookings');
@@ -188,19 +191,21 @@ const Navbar = () => {
 
               {user ? (
                 <div className="flex items-center gap-2.5">
-                  {/* Live Bookings Cart Badge */}
-                  <Link
-                    to="/my-bookings"
-                    className="relative p-2.5 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-800 transition-all flex items-center justify-center cursor-pointer shadow-2xs"
-                    title="My Bookings"
-                  >
-                    <ShoppingCart className="w-4 h-4 text-slate-700" />
-                    {activeBookingsCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-in zoom-in">
-                        {activeBookingsCount}
-                      </span>
-                    )}
-                  </Link>
+                  {/* Live Bookings Cart Badge (Only for Customer role) */}
+                  {user.role === 'customer' && (
+                    <Link
+                      to="/my-bookings"
+                      className="relative p-2.5 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-800 transition-all flex items-center justify-center cursor-pointer shadow-2xs"
+                      title="My Bookings"
+                    >
+                      <ShoppingCart className="w-4 h-4 text-slate-700" />
+                      {activeBookingsCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-in zoom-in">
+                          {activeBookingsCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
 
                   {/* Profile Dropdown */}
                   <div className="relative" ref={profileDropdownRef}>
