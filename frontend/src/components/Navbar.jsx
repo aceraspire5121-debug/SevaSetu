@@ -239,13 +239,15 @@ const Navbar = () => {
                           >
                             <ShieldCheck className="w-4 h-4 text-teal-600" /> Dashboard
                           </Link>
-                          <Link
-                            to="/my-bookings"
-                            onClick={() => setIsProfileMenuOpen(false)}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-                          >
-                            <Briefcase className="w-4 h-4 text-slate-600" /> My Bookings
-                          </Link>
+                          {user.role === 'customer' && (
+                            <Link
+                              to="/my-bookings"
+                              onClick={() => setIsProfileMenuOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                            >
+                              <Briefcase className="w-4 h-4 text-slate-600" /> My Bookings
+                            </Link>
+                          )}
                           <button
                             type="button"
                             onClick={handleLogout}
